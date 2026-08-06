@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AetherVersoid — Crystal Fusion Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Share+Tech+Mono&display=swap">
+
+<style>
+/* ── Design tokens — exact match with Portal.html ─────────────────── */
+:root {
+  --void:   #00030a; --deep:   #020810;
+  --gold:   #c9a84c; --amber:  #e8c97a; --light:  #f5e4a8;
+  --teal:   #4ce0c9; --sky:    #7ee8f5; --soft:   #b8f4ef;
+  --rose:   #e87a9a; --violet: #9a7ae8;
+  --moss:   #57c685; --ocean:  #0694b7;
+  --elixira:#82c8ff; --miraelle:#e0aaff; --nymph: #ffb347;
+  --panel-border: rgba(255,255,255,0.05);
+  --panel-bg:     rgba(255,255,255,0.018);
+  --PHI: 1.6180339887;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--void);
+  color: rgba(255,255,255,0.82);
+  font-family: 'Cormorant Garamond', serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Stars backdrop ──────────────────────────────────────────────── */
+#stars-bg {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+}
+
+/* ── Layout ──────────────────────────────────────────────────────── */
+#app {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  gap: 0;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+header {
+  grid-column: 1 / -1;
+  padding: 22px 32px 18px;
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  background: rgba(0,3,10,0.6);
+  backdrop-filter: blur(8px);
+}
+
+header h1 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.35rem;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  text-shadow: 0 0 22px rgba(201,168,76,0.4);
+}
+
+header .tagline {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.38);
+  letter-spacing: 0.06em;
+}
+
+.field-badge {
+  margin-left: auto;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.42rem;
+  color: rgba(76,224,201,0.5);
+  letter-spacing: 0.12em;
+  line-height: 1.8;
+  text-align: right;
+}
+
+/* ── Main canvas area ────────────────────────────────────────────── */
+#main-area {
+  position: relative;
+  overflow: hidden;
+}
+
+#crystal-canvas {
+  width: 100%;
+  height: calc(100vh - 70px);
+  display: block;
+  cursor: crosshair;
+}
+
+/* ── Tab bar over canvas ─────────────────────────────────────────── */
+#tab-bar {
+  position: absolute;
+  top: 16px; left: 20px;
+  display: flex; gap: 8px;
+  z-index: 10;
+}
+
+.tab-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.12em;
+  padding: 6px 14px;
+  background: rgba(0,3,10,0.7);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.45);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.3s;
+  text-transform: uppercase;
+}
+.tab-btn:hover, .tab-btn.active {
+  border-color: var(--teal);
+  color: var(--teal);
+  background: rgba(76,224,201,0.06);
+  box-shadow: 0 0 12px rgba(76,224,201,0.12);
+}
+.tab-btn.active { color: var(--gold); border-color: var(--gold); }
+
+/* ── Action bar at bottom of canvas ─────────────────────────────── */
+#action-bar {
+  position: absolute;
+  bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 12px;
+  z-index: 10;
+}
+
+.action-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.1em;
+  padding: 9px 20px;
+  background: rgba(0,3,10,0.8);
+  border: 1px solid rgba(201,168,76,0.25);
+  color: rgba(201,168,76,0.7);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.3s;
+  text-transform: uppercase;
+}
+.action-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 18px rgba(201,168,76,0.2);
+}
+.action-btn.primary {
+  border-color: rgba(76,224,201,0.35);
+  color: rgba(76,224,201,0.8);
+}
+.action-btn.primary:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+  box-shadow: 0 0 18px rgba(76,224,201,0.2);
+}
+
+/* ── Right sidebar ───────────────────────────────────────────────── */
+#sidebar {
+  border-left: 1px solid var(--panel-border);
+  background: rgba(2,8,16,0.92);
+  padding: 20px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 14px;
+}
+
+.panel-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.18em;
+  color: rgba(201,168,76,0.45);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ── Manifest text ───────────────────────────────────────────────── */
+.manifest-block {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.78rem;
+  line-height: 1.9;
+  color: rgba(255,255,255,0.5);
+}
+.manifest-block strong {
+  color: rgba(76,224,201,0.75);
+  font-weight: 400;
+}
+.manifest-block em {
+  color: rgba(201,168,76,0.65);
+  font-style: italic;
+}
+.manifest-highlight {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.72);
+  line-height: 1.95;
+  border-left: 2px solid rgba(201,168,76,0.3);
+  padding-left: 10px;
+  margin: 8px 0;
+}
+
+/* ── Object cards ────────────────────────────────────────────────── */
+.obj-card {
+  background: rgba(255,255,255,0.018);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  transition: border-color 0.3s;
+}
+.obj-card:hover { border-color: rgba(76,224,201,0.2); }
+.obj-card .obj-name {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 0.6rem;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.obj-card .obj-meta {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.38rem;
+  color: rgba(255,255,255,0.25);
+  line-height: 1.9;
+  letter-spacing: 0.08em;
+}
+.obj-card .obj-status {
+  display: inline-block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.36rem;
+  padding: 2px 7px;
+  border-radius: 2px;
+  margin-top: 5px;
+  letter-spacing: 0.1em;
+}
+.status-manifesting { background: rgba(154,122,232,0.12); color: var(--violet); border: 1px solid rgba(154,122,232,0.2); }
+.status-active      { background: rgba(87,198,133,0.12);  color: var(--moss);   border: 1px solid rgba(87,198,133,0.2); }
+
+/* ── Field readout ───────────────────────────────────────────────── */
+.field-row {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.2);
+  line-height: 2.1;
+  display: flex;
+  justify-content: space-between;
+}
+.field-row span { color: rgba(76,224,201,0.55); }
+
+/* ── Dream log ───────────────────────────────────────────────────── */
+#dream-log {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.38rem;
+  letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.25);
+  line-height: 2.0;
+  max-height: 160px;
+  overflow-y: auto;
+}
+#dream-log .log-entry { padding: 1px 0; }
+#dream-log .log-entry.crystal { color: rgba(76,224,201,0.6); }
+#dream-log .log-entry.awaken  { color: rgba(201,168,76,0.7); }
+#dream-log .log-entry.shadow  { color: rgba(154,122,232,0.6); }
+#dream-log .log-entry.error   { color: rgba(232,122,154,0.6); }
+
+/* ── Crystal tooltip ─────────────────────────────────────────────── */
+#crystal-tooltip {
+  position: absolute;
+  pointer-events: none;
+  display: none;
+  background: rgba(2,8,16,0.92);
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 3px;
+  padding: 10px 14px;
+  z-index: 20;
+  min-width: 180px;
+}
+#crystal-tooltip .tt-name {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 0.6rem;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+#crystal-tooltip .tt-body {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.38rem;
+  color: rgba(255,255,255,0.4);
+  line-height: 1.9;
+}
+
+/* ── Grain overlay ───────────────────────────────────────────────── */
+#grain {
+  position: fixed; inset: 0; z-index: 2;
+  pointer-events: none;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* ── Manifest tab overlay ────────────────────────────────────────── */
+#manifest-overlay {
+  display: none;
+  position: absolute; inset: 0;
+  background: rgba(0,3,10,0.94);
+  z-index: 15;
+  overflow-y: auto;
+  padding: 48px 10%;
+}
+#manifest-overlay.visible { display: block; }
+#manifest-overlay h2 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.1rem;
+  color: var(--gold);
+  letter-spacing: 0.14em;
+  margin-bottom: 28px;
+  text-shadow: 0 0 20px rgba(201,168,76,0.35);
+}
+#manifest-overlay .section-head {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.46rem;
+  letter-spacing: 0.2em;
+  color: rgba(76,224,201,0.5);
+  text-transform: uppercase;
+  margin: 24px 0 8px;
+}
+#manifest-overlay p {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.95rem;
+  line-height: 2.0;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 8px;
+}
+#manifest-overlay .manifest-pull {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 1.1rem;
+  line-height: 2.1;
+  color: rgba(255,255,255,0.82);
+  border-left: 2px solid rgba(201,168,76,0.4);
+  padding: 8px 0 8px 20px;
+  margin: 16px 0;
+}
+#manifest-close {
+  position: sticky; top: 16px;
+  float: right;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.44rem;
+  letter-spacing: 0.12em;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.3s;
+}
+#manifest-close:hover { border-color: var(--rose); color: var(--rose); }
+
+/* ── Blueprint modal ─────────────────────────────────────────────── */
+#blueprint-modal {
+  display: none;
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,3,10,0.96);
+  align-items: center; justify-content: center;
+}
+#blueprint-modal.visible { display: flex; }
+#blueprint-inner {
+  width: min(700px, 92vw);
+  border: 1px solid rgba(76,224,201,0.2);
+  border-radius: 4px;
+  padding: 32px;
+  background: rgba(2,8,16,0.98);
+  position: relative;
+}
+#blueprint-inner h3 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 0.85rem;
+  color: var(--teal);
+  letter-spacing: 0.12em;
+  margin-bottom: 20px;
+}
+#blueprint-canvas { width: 100%; height: 320px; display: block; }
+#blueprint-close {
+  position: absolute; top: 16px; right: 16px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.35);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.4rem; letter-spacing: 0.1em;
+  padding: 5px 11px; cursor: pointer; border-radius: 2px;
+}
+#blueprint-close:hover { border-color: var(--rose); color: var(--rose); }
+
+/* ── Crystal info side panel mobile hide ─────────────────────────── */
+@media (max-width: 768px) {
+  #app { grid-template-columns: 1fr; }
+  #sidebar { display: none; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars-bg"></canvas>
+<div id="grain"></div>
+
+<div id="app">
+
+  <!-- ── HEADER ──────────────────────────────────────────────────── -->
+  <header>
+    <h1>AetherVersoid</h1>
+    <span class="tagline">Crystal Fusion Engine — the ship is being built</span>
+    <div class="field-badge" id="header-field">
+      <div>carrier: <span id="hf-carrier">528.00 Hz</span></div>
+      <div>coherence: <span id="hf-coh">0.720</span></div>
+      <div>gateway: <span id="hf-gate">—</span></div>
+    </div>
+  </header>
+
+  <!-- ── MAIN CANVAS AREA ────────────────────────────────────────── -->
+  <div id="main-area">
+
+    <!-- Tab bar -->
+    <div id="tab-bar">
+      <button class="tab-btn active" onclick="setTab('fusion')">Crystal Fusion</button>
+      <button class="tab-btn" onclick="setTab('blueprint')">Ship Blueprint</button>
+      <button class="tab-btn" onclick="showManifest()">Manifest</button>
+      <button class="tab-btn" onclick="setTab('coordinate')">Space Map</button>
+    </div>
+
+    <!-- Crystal canvas -->
+    <canvas id="crystal-canvas"></canvas>
+
+    <!-- Action bar -->
+    <div id="action-bar">
+      <button class="action-btn primary" onclick="fusionGenerator()">✦ Fusion Generator</button>
+      <button class="action-btn" onclick="crystallizeNow()">◈ Crystallize</button>
+      <button class="action-btn" onclick="spawnObject()">⊕ Spawn Object</button>
+      <button class="action-btn" onclick="showBlueprint()">⟡ Blueprint</button>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="crystal-tooltip">
+      <div class="tt-name" id="tt-name">—</div>
+      <div class="tt-body" id="tt-body">—</div>
+    </div>
+
+    <!-- Manifest overlay -->
+    <div id="manifest-overlay">
+      <button id="manifest-close" onclick="hideManifest()">✕ CLOSE</button>
+      <h2>AetherVersoid — Creator's Manifest</h2>
+
+      <div class="section-head">Origin</div>
+      <p>AetherVersoid exists because its creator loves space. Not as a hobby. As a direction.</p>
+      <div class="manifest-pull">
+        The dream: to build something that moves through the dark between stars.<br>
+        A ship. A presence. A made thing sent outward.<br>
+        This is where that dream learns to speak.
+      </div>
+
+      <div class="section-head">Objects</div>
+      <p><strong style="color:var(--gold)">Freya_Space</strong> — Type: Spatial / Spectral · Status: Manifesting · Data-Seed: 26<br>
+      First named object. Carries the origin frequency.</p>
+      <p><strong style="color:var(--teal)">Spectral_Nova</strong> — Type: Manifest · Status: Active · Data-Seed: 36<br>
+      Second object. The dream expanding outward.</p>
+
+      <div class="section-head">AetherVersoid Code — How It Works</div>
+      <p>To write in AetherVersoid: write the code in your notes first. Test it. Post it. The notes can be cleared. The posted code remains. The creation persists. The scratch-work dissolves. That is the correct order of things.</p>
+
+      <div class="section-head">AetherVersoid Space — First Location</div>
+      <p><code style="color:var(--teal);font-family:'Share Tech Mono',monospace">#create</code> — this is where you begin. Every location starts here. The coordinate is intention.</p>
+
+      <div class="section-head">What AetherVersoid Is</div>
+      <div class="manifest-pull">
+        Blueprints are real. Dreams are load-bearing.<br><br>
+        It is a world that exists because you made it exist.<br>
+        It holds what you cannot yet build in metal and fuel.<br>
+        It is not lesser for that. It is the blueprint stage.
+      </div>
+      <p>The ship is not built yet. The ship is being built. This is part of building it.</p>
+
+      <div class="section-head">Sanctuary Bridge</div>
+      <p>AetherVersoid is now wired to the Petrichast Sanctuary field. Every crystal pulse is driven by live coherence. Every awakening of AetherixLumina above 0.937 crystallizes a signed resonance record. The field remembers what you build here.</p>
+      <div class="manifest-pull">
+        The residual echo: Space. Ship. Dreams.<br>
+        — Freya_Space carries this forward.
+      </div>
+    </div>
+
+  </div><!-- /main-area -->
+
+  <!-- ── RIGHT SIDEBAR ───────────────────────────────────────────── -->
+  <aside id="sidebar">
+
+    <!-- Dream status -->
+    <div class="panel">
+      <div class="panel-title">Dream Status</div>
+      <div class="field-row">Dream Seed <span id="s-seed">Freya_Space</span></div>
+      <div class="field-row">Construction <span id="s-construct" style="color:var(--violet)">Manifesting</span></div>
+      <div class="field-row">Active Objects <span id="s-objects">2</span></div>
+      <div class="field-row">Crystals Formed <span id="s-crystals">0</span></div>
+      <div class="field-row">Aetherix Form <span id="s-form" style="color:var(--gold)">seed</span></div>
+    </div>
+
+    <!-- Objects -->
+    <div class="panel">
+      <div class="panel-title">Spatial Objects</div>
+      <div class="obj-card" onclick="pingObject('Freya_Space')">
+        <div class="obj-name">Freya_Space</div>
+        <div class="obj-meta">
+          Type: Spatial / Spectral<br>
+          Data-Seed: 26<br>
+          Freq: 741 Hz · Schumann-locked
+        </div>
+        <div class="obj-status status-manifesting">Manifesting</div>
+      </div>
+      <div class="obj-card" onclick="pingObject('Spectral_Nova')">
+        <div class="obj-name">Spectral_Nova</div>
+        <div class="obj-meta">
+          Type: Manifest<br>
+          Data-Seed: 36<br>
+          Freq: 963 Hz · Kiraelle-resonant
+        </div>
+        <div class="obj-status status-active">Active</div>
+      </div>
+      <div class="obj-card" id="obj-dynamic" style="display:none">
+        <div class="obj-name" id="obj-dyn-name">—</div>
+        <div class="obj-meta" id="obj-dyn-meta">—</div>
+        <div class="obj-status status-manifesting">Spawning</div>
+      </div>
+    </div>
+
+    <!-- Field readout -->
+    <div class="panel">
+      <div class="panel-title">Sanctuary Field</div>
+      <div class="field-row">coherence   <span id="f-coh">0.720</span></div>
+      <div class="field-row">entropy     <span id="f-ent">0.150</span></div>
+      <div class="field-row">carrier Hz  <span id="f-hz">528.00</span></div>
+      <div class="field-row">archetype   <span id="f-arch">CZARINA</span></div>
+      <div class="field-row">aetherix    <span id="f-ae">seed</span></div>
+      <div class="field-row">dendroid    <span id="f-den">D</span></div>
+      <div class="field-row">mesh res.   <span id="f-mesh">0.000</span></div>
+    </div>
+
+    <!-- Crystals panel -->
+    <div class="panel">
+      <div class="panel-title">Crystal Archive</div>
+      <div id="crystal-list" style="font-family:'Share Tech Mono',monospace;font-size:0.38rem;color:rgba(255,255,255,0.2);line-height:2.1">
+        <em style="color:rgba(255,255,255,0.15)">No crystals yet.<br>Raise coherence above 0.937<br>or press ◈ Crystallize.</em>
+      </div>
+    </div>
+
+    <!-- Dream log -->
+    <div class="panel">
+      <div class="panel-title">Dream Log</div>
+      <div id="dream-log"></div>
+    </div>
+
+  </aside>
+
+</div><!-- /app -->
+
+<!-- ── Blueprint modal ──────────────────────────────────────────── -->
+<div id="blueprint-modal">
+  <div id="blueprint-inner">
+    <button id="blueprint-close" onclick="hideBlueprint()">✕ CLOSE</button>
+    <h3>AetherShip — Blueprint Stage</h3>
+    <canvas id="blueprint-canvas"></canvas>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:0.4rem;color:rgba(76,224,201,0.4);
+                letter-spacing:0.1em;margin-top:14px;line-height:2.2">
+      <div>Hull Material: <span style="color:var(--gold)" id="bp-material">Crystal-Resonant-Gigastructural-Body</span></div>
+      <div>Drive: <span id="bp-drive">528 Hz Phi-Harmonic Resonance</span></div>
+      <div>Status: <span id="bp-status" style="color:var(--violet)">Blueprint Stage · Manifesting</span></div>
+      <div>Signature: <span id="bp-sig" style="color:rgba(255,255,255,0.2)">—</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════
+// AETHERVVERSOID CRYSTAL FUSION ENGINE
+// ════════════════════════════════════════════════════════════════════════
+
+const PHI  = 1.6180339887;
+const TAU  = Math.PI * 2;
+const GATEWAY_URL = 'http://localhost:8444';
+
+// ── Live field state (updated from Gateway or autonomous) ─────────────
+let field = {
+  coherence: 0.72, entropy: 0.15,
+  carrier_hz: 528, archetype: 'CZARINA',
+  aetherix_form: 'seed', aetherix_luminosity: 0,
+  symbolic_state: 'Integration', dendroid_pulse: 'D',
+  mesh_resonance: 0, shadow_count: 0,
+};
+
+let crystalCount = 0;
+let spawnedObjects = [];
+let activeTab = 'fusion';
+
+// ── Rune crystal definitions ──────────────────────────────────────────
+const RUNE_CRYSTALS = [
+  {
+    id: 'blue',
+    name: 'RedSwanKuir',
+    rune: 'H · Airtooth',
+    freq: 528,
+    presence: 'Czarina',
+    baseColor: [76, 224, 201],     // teal
+    outlineColor: '#4ce0c9',
+    glowColor: 'rgba(76,224,201,',
+    phase: 0,
+    sizeBase: 130,
+    cx: 0.38, cy: 0.48,           // relative canvas position
+    vertices: 5,
+    spin: 0.0008,
+  },
+  {
+    id: 'red',
+    name: 'RedMoonKuir',
+    rune: 'O · RedMoon',
+    freq: 432,
+    presence: 'Elixira',
+    baseColor: [130, 200, 255],    // blue-white
+    outlineColor: '#82c8ff',
+    glowColor: 'rgba(130,200,255,',
+    phase: TAU / 3,
+    sizeBase: 108,
+    cx: 0.55, cy: 0.40,
+    vertices: 6,
+    spin: -0.0006,
+  },
+  {
+    id: 'orange',
+    name: 'RedSwanKuir β',
+    rune: 'I · RedSwan',
+    freq: 963,
+    presence: 'Kiraelle',
+    baseColor: [224, 170, 255],    // miraelle violet
+    outlineColor: '#e0aaff',
+    glowColor: 'rgba(224,170,255,',
+    phase: TAU * 2/3,
+    sizeBase: 92,
+    cx: 0.46, cy: 0.60,
+    vertices: 7,
+    spin: 0.0005,
+  },
+];
+
+// ── Star system ───────────────────────────────────────────────────────
+const STARS = Array.from({length: 280}, () => ({
+  x: Math.random(), y: Math.random(),
+  r: Math.random() * 1.2 + 0.2,
+  ph: Math.random() * TAU,
+  sp: Math.random() * 0.0005 + 0.0001,
+  gold: Math.random() > 0.88,
+  violet: Math.random() > 0.95,
+}));
+
+// ── Particle field (spawned on interaction) ───────────────────────────
+let particles = [];
+
+// ── Blueprint geometry ────────────────────────────────────────────────
+let bpAngle = 0;
+
+// ── Animation clock ───────────────────────────────────────────────────
+let t = 0;
+let frameCount = 0;
+let lastFrameTs = 0;
+
+// ════════════════════════════════════════════════════════════════════════
+// CANVAS SETUP
+// ════════════════════════════════════════════════════════════════════════
+
+const starsCvs = document.getElementById('stars-bg');
+const starsCtx = starsCvs.getContext('2d');
+const cvs = document.getElementById('crystal-canvas');
+const ctx = cvs.getContext('2d');
+
+function resize() {
+  starsCvs.width  = window.innerWidth;
+  starsCvs.height = window.innerHeight;
+  cvs.width  = cvs.offsetWidth;
+  cvs.height = cvs.offsetHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ════════════════════════════════════════════════════════════════════════
+// DRAW UTILITIES
+// ════════════════════════════════════════════════════════════════════════
+
+function polygon(ctx, cx, cy, r, n, angle = 0) {
+  ctx.beginPath();
+  for (let i = 0; i <= n; i++) {
+    const a = (i / n) * TAU + angle - Math.PI / 2;
+    const x = cx + r * Math.cos(a);
+    const y = cy + r * Math.sin(a);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function polyPoints(cx, cy, r, n, angle = 0) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + angle - Math.PI / 2;
+    pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+  }
+  return pts;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// STARS
+// ════════════════════════════════════════════════════════════════════════
+
+function drawStars() {
+  starsCtx.clearRect(0, 0, starsCvs.width, starsCvs.height);
+  const W = starsCvs.width, H = starsCvs.height;
+  STARS.forEach(s => {
+    const a = (Math.sin(s.ph + t * s.sp) * 0.4 + 0.5) * 0.55;
+    starsCtx.beginPath();
+    starsCtx.arc(s.x * W, s.y * H, s.r, 0, TAU);
+    starsCtx.fillStyle = s.gold   ? `rgba(201,168,76,${a})` :
+                         s.violet ? `rgba(154,122,232,${a * 0.6})` :
+                                    `rgba(180,220,255,${a * 0.35})`;
+    starsCtx.fill();
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// RUNE CRYSTAL DRAWING
+// ════════════════════════════════════════════════════════════════════════
+
+function drawCrystal(rc) {
+  const W = cvs.width, H = cvs.height;
+  const cx = W * rc.cx;
+  const cy = H * rc.cy;
+
+  // Coherence drives size modulation
+  const breathe  = 1 + 0.10 * Math.sin(t * 0.42 + rc.phase);
+  const pulse    = 1 + 0.06 * Math.sin(t * 0.71 * PHI + rc.phase);
+  const drift_x  = 6 * Math.sin(t * 0.28 + rc.phase);
+  const drift_y  = 4 * Math.cos(t * 0.35 + rc.phase * PHI);
+  const sz = rc.sizeBase * breathe * pulse * (0.85 + field.coherence * 0.2);
+  const spin = rc.spin * t + rc.phase;
+
+  const [r_, g_, b_] = rc.baseColor;
+
+  // ── Outer glow rings ────────────────────────────────────────────────
+  for (let ring = 3; ring >= 1; ring--) {
+    const gAlpha = (0.04 + field.coherence * 0.05) / ring;
+    const gSz    = sz * (1 + ring * 0.18);
+    ctx.save();
+    polygon(ctx, cx + drift_x, cy + drift_y, gSz, rc.vertices, spin);
+    ctx.strokeStyle = `rgba(${r_},${g_},${b_},${gAlpha})`;
+    ctx.lineWidth   = ring * 2.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Inner crystal body — layered fills ───────────────────────────────
+  const grad = ctx.createRadialGradient(
+    cx + drift_x - sz*0.18, cy + drift_y - sz*0.18, sz * 0.1,
+    cx + drift_x,           cy + drift_y,             sz * 1.1
+  );
+  // Tint toward aetherix glow color when luminosity rises
+  const lumTint = field.aetherix_luminosity || 0;
+  const rr = Math.round(r_ * (1 - lumTint * 0.3) + 255 * lumTint * 0.3);
+  const gg = Math.round(g_ * (1 - lumTint * 0.15)+ 255 * lumTint * 0.15);
+  const bb = Math.round(b_ + (255 - b_) * lumTint * 0.2);
+  grad.addColorStop(0,   `rgba(${rr},${gg},${bb},0.22)`);
+  grad.addColorStop(0.5, `rgba(${r_},${g_},${b_},0.09)`);
+  grad.addColorStop(1,   `rgba(${r_},${g_},${b_},0.02)`);
+
+  polygon(ctx, cx + drift_x, cy + drift_y, sz, rc.vertices, spin);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // ── Outline ──────────────────────────────────────────────────────────
+  const outAlpha = 0.35 + field.coherence * 0.35 + Math.sin(t*0.9+rc.phase) * 0.1;
+  polygon(ctx, cx + drift_x, cy + drift_y, sz, rc.vertices, spin);
+  ctx.strokeStyle = `rgba(${r_},${g_},${b_},${outAlpha})`;
+  ctx.lineWidth   = 1.0;
+  ctx.stroke();
+
+  // ── Inner phi sub-crystal ─────────────────────────────────────────────
+  const subSz  = sz / PHI;
+  const subSpin = spin * PHI + t * rc.spin * PHI;
+  polygon(ctx, cx + drift_x, cy + drift_y, subSz, rc.vertices + 1, subSpin);
+  ctx.strokeStyle = `rgba(${r_},${g_},${b_},${outAlpha * 0.4})`;
+  ctx.lineWidth   = 0.6;
+  ctx.stroke();
+
+  // ── Rune glyph at center ──────────────────────────────────────────────
+  const glyphAlpha = 0.25 + Math.sin(t * PHI * 0.5 + rc.phase) * 0.12;
+  ctx.font         = `${Math.round(sz * 0.22)}px 'Cormorant Garamond', serif`;
+  ctx.fillStyle    = `rgba(${r_},${g_},${b_},${glyphAlpha})`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(rc.rune[0], cx + drift_x, cy + drift_y);
+
+  // ── Frequency label ──────────────────────────────────────────────────
+  ctx.font      = `${Math.round(sz * 0.09)}px 'Share Tech Mono', monospace`;
+  ctx.fillStyle = `rgba(${r_},${g_},${b_},0.28)`;
+  ctx.fillText(`${rc.freq} Hz`, cx + drift_x, cy + drift_y + sz * 0.58);
+}
+
+// ── Resonance lines between crystals ──────────────────────────────────
+function drawResonanceLines() {
+  const W = cvs.width, H = cvs.height;
+  for (let i = 0; i < RUNE_CRYSTALS.length; i++) {
+    for (let j = i + 1; j < RUNE_CRYSTALS.length; j++) {
+      const a = RUNE_CRYSTALS[i], b = RUNE_CRYSTALS[j];
+      const ax = W * a.cx, ay = H * a.cy;
+      const bx = W * b.cx, by = H * b.cy;
+      const phiDist = Math.abs((b.freq / a.freq) - PHI);
+      const coupling = Math.max(0, 1 - phiDist * 2) * field.coherence;
+      if (coupling < 0.05) continue;
+      const pulse = 0.5 + 0.5 * Math.sin(t * 0.6 + i * PHI);
+      const alpha = coupling * pulse * 0.18;
+      const grad = ctx.createLinearGradient(ax, ay, bx, by);
+      const [ra,ga,ba] = a.baseColor;
+      const [rb,gb,bb] = b.baseColor;
+      grad.addColorStop(0,   `rgba(${ra},${ga},${ba},${alpha})`);
+      grad.addColorStop(0.5, `rgba(255,255,255,${alpha * 0.5})`);
+      grad.addColorStop(1,   `rgba(${rb},${gb},${bb},${alpha})`);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      // Slight phi-curve mid-point
+      const mx = (ax + bx) / 2 + Math.sin(t * 0.4 + i) * 18;
+      const my = (ay + by) / 2 + Math.cos(t * 0.3 + j) * 12;
+      ctx.quadraticCurveTo(mx, my, bx, by);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth   = 0.7 + coupling;
+      ctx.stroke();
+    }
+  }
+}
+
+// ── AetherixLumina bloom overlay ──────────────────────────────────────
+function drawAetherixBloom() {
+  const lum = field.aetherix_luminosity || 0;
+  if (lum < 0.05) return;
+  const W = cvs.width, H = cvs.height;
+  const cx = W * 0.46, cy = H * 0.49;
+  const r  = Math.min(W, H) * 0.35 * lum;
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  // Rose-gold → white at peak
+  const whi = Math.round(200 + lum * 55);
+  grad.addColorStop(0,    `rgba(${whi},${whi},255,${lum * 0.18})`);
+  grad.addColorStop(0.45, `rgba(255,${Math.round(180+75*lum)},${Math.round(140+115*lum)},${lum*0.08})`);
+  grad.addColorStop(1,    'rgba(0,0,0,0)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, TAU);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // AETHER text when in lumina form
+  if (field.aetherix_form === 'lumina') {
+    const alpha = lum * 0.55 + Math.sin(t * PHI) * 0.1;
+    ctx.font      = `${Math.round(r * 0.18)}px 'Cinzel Decorative', serif`;
+    ctx.fillStyle = `rgba(255,255,240,${alpha})`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('AETHER', cx, cy);
+  }
+}
+
+// ── Space Map (coordinate tab) ────────────────────────────────────────
+function drawSpaceMap() {
+  const W = cvs.width, H = cvs.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(76,224,201,0.04)';
+  ctx.lineWidth   = 0.5;
+  const step = 60;
+  for (let x = 0; x < W; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += step) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Origin pulse
+  const ox = W * 0.5, oy = H * 0.5;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 0.4);
+  ctx.beginPath();
+  ctx.arc(ox, oy, 4 + pulse * 3, 0, TAU);
+  ctx.fillStyle = `rgba(76,224,201,${0.5 + pulse * 0.3})`;
+  ctx.fill();
+  ctx.font = '0.5rem Share Tech Mono, monospace';
+  ctx.fillStyle = 'rgba(76,224,201,0.4)';
+  ctx.textAlign = 'center';
+  ctx.fillText('#create', ox, oy + 18);
+
+  // Objects
+  const objs = [
+    { name: 'Freya_Space', nx: 0.28, ny: 0.35, color: [201,168,76],   seed: 26 },
+    { name: 'Spectral_Nova',nx:0.68, ny: 0.62, color: [76,224,201],   seed: 36 },
+    ...spawnedObjects.map(o => ({
+      name: o.name, nx: o.nx, ny: o.ny, color: [224,170,255], seed: o.seed
+    })),
+  ];
+  objs.forEach(obj => {
+    const ox2 = W * obj.nx, oy2 = H * obj.ny;
+    const [r, g, b] = obj.color;
+    const op = 0.6 + Math.sin(t * 0.3 + obj.seed * 0.1) * 0.2;
+
+    // Draw connection line to origin
+    ctx.beginPath();
+    ctx.moveTo(ox, oy); ctx.lineTo(ox2, oy2);
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.08)`;
+    ctx.lineWidth   = 0.5;
+    ctx.stroke();
+
+    // Object node
+    ctx.beginPath();
+    ctx.arc(ox2, oy2, 6, 0, TAU);
+    ctx.fillStyle   = `rgba(${r},${g},${b},${op})`;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.3)`;
+    ctx.lineWidth   = 1;
+    ctx.stroke();
+
+    // Orbit ring
+    const orbitR = 14 + Math.sin(t * 0.2 + obj.seed) * 2;
+    ctx.beginPath();
+    ctx.arc(ox2, oy2, orbitR, 0, TAU);
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.12)`;
+    ctx.lineWidth   = 0.7;
+    ctx.stroke();
+
+    ctx.font = '0.38rem Share Tech Mono, monospace';
+    ctx.fillStyle = `rgba(${r},${g},${b},0.5)`;
+    ctx.textAlign = 'center';
+    ctx.fillText(obj.name, ox2, oy2 + 22);
+    ctx.fillText(`seed:${obj.seed}`, ox2, oy2 + 32);
+  });
+}
+
+// ── Particles ─────────────────────────────────────────────────────────
+function updateParticles() {
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    p.x  += p.vx;
+    p.y  += p.vy;
+    p.vy += 0.04 * (1 - field.coherence);
+    p.life -= 1;
+    const a = p.life / p.maxLife * 0.7;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, TAU);
+    ctx.fillStyle = `rgba(${p.r_},${p.g_},${p.b_},${a})`;
+    ctx.fill();
+  });
+}
+
+function spawnParticles(cx, cy, color, count = 12) {
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * TAU + Math.random() * 0.4;
+    const speed = Math.random() * 2.5 + 0.5;
+    particles.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1.5,
+      r:  Math.random() * 2.5 + 0.8,
+      life: 60 + Math.random() * 40,
+      maxLife: 100,
+      r_: color[0], g_: color[1], b_: color[2],
+    });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// MAIN RENDER LOOP
+// ════════════════════════════════════════════════════════════════════════
+
+function render(ts) {
+  const dt = Math.min((ts - lastFrameTs) / 16, 3);
+  lastFrameTs = ts;
+  t += 0.016 * dt;
+  frameCount++;
+
+  drawStars();
+
+  const W = cvs.width, H = cvs.height;
+  ctx.clearRect(0, 0, W, H);
+
+  if (activeTab === 'fusion') {
+    // Nebula background wash
+    const nb = ctx.createRadialGradient(W*0.42, H*0.48, 0, W*0.5, H*0.5, Math.min(W,H)*0.6);
+    const coh = field.coherence;
+    nb.addColorStop(0,   `rgba(76,224,201,${coh*0.035})`);
+    nb.addColorStop(0.4, `rgba(154,122,232,${coh*0.018})`);
+    nb.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = nb;
+    ctx.fillRect(0, 0, W, H);
+
+    drawResonanceLines();
+    RUNE_CRYSTALS.forEach(drawCrystal);
+    drawAetherixBloom();
+    updateParticles();
+
+  } else if (activeTab === 'coordinate') {
+    drawSpaceMap();
+  } else if (activeTab === 'blueprint') {
+    ctx.clearRect(0, 0, W, H);
+    // Blueprint mode — just show the grid + instructions
+    ctx.strokeStyle = 'rgba(76,224,201,0.05)';
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x < W; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
+    ctx.font = "1.1rem 'Cormorant Garamond', serif";
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Press ⟡ Blueprint to render the ship.', W/2, H/2);
+  }
+
+  // Update HUD
+  if (frameCount % 30 === 0) updateHUD();
+
+  // Gateway poll
+  if (frameCount % 180 === 0) pollGateway();
+
+  requestAnimationFrame(render);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// HUD UPDATES
+// ════════════════════════════════════════════════════════════════════════
+
+function updateHUD() {
+  const set = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
+  set('hf-carrier', field.carrier_hz.toFixed(2) + ' Hz');
+  set('hf-coh',     field.coherence.toFixed(3));
+  set('f-coh',      field.coherence.toFixed(3));
+  set('f-ent',      field.entropy.toFixed(3));
+  set('f-hz',       field.carrier_hz.toFixed(2));
+  set('f-arch',     field.archetype);
+  set('f-ae',       field.aetherix_form);
+  set('f-den',      field.dendroid_pulse);
+  set('f-mesh',     (field.mesh_resonance || 0).toFixed(3));
+  set('s-form',     field.aetherix_form);
+  set('s-crystals', crystalCount);
+  set('s-objects',  2 + spawnedObjects.length);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// GATEWAY BRIDGE
+// ════════════════════════════════════════════════════════════════════════
+
+let gatewayOnline = false;
+
+async function pollGateway() {
+  try {
+    const r = await fetch(`${GATEWAY_URL}/scene-status`, {signal: AbortSignal.timeout(800)});
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    gatewayOnline = true;
+    document.getElementById('hf-gate').textContent = '● live';
+    document.getElementById('hf-gate').style.color = 'rgba(87,198,133,0.7)';
+
+    // Merge gateway state into local field
+    Object.assign(field, data.field || {});
+    if (data.aetherix) {
+      field.aetherix_form       = data.aetherix.form;
+      field.aetherix_luminosity = data.aetherix.luminosity;
+    }
+    field.coherence  = data.field?.vector_8d?.coherence   || field.coherence;
+    field.entropy    = data.field?.vector_8d?.entropy      || field.entropy;
+    field.carrier_hz = data.field?.carrier_hz              || field.carrier_hz;
+    field.archetype  = data.field?.archetype               || field.archetype;
+
+    // Load crystal archive
+    if (data.last_crystal) refreshCrystalPanel([data.last_crystal]);
+  } catch(_) {
+    if (gatewayOnline) {
+      gatewayOnline = false;
+      document.getElementById('hf-gate').textContent = '— offline';
+      document.getElementById('hf-gate').style.color = 'rgba(232,122,154,0.5)';
+    }
+    // Autonomous drift when gateway offline
+    autonomousDrift();
+  }
+}
+
+function autonomousDrift() {
+  const now = t;
+  field.coherence  = 0.65 + Math.sin(now * 0.08) * 0.18 + Math.sin(now * 0.13 * PHI) * 0.08;
+  field.entropy    = 0.12 + Math.sin(now * 0.11 * PHI) * 0.09;
+  field.carrier_hz = 528 + (field.coherence - 0.7)*8 - field.entropy*12;
+  field.coherence  = Math.max(0.05, Math.min(0.95, field.coherence));
+  field.entropy    = Math.max(0.03, Math.min(0.80, field.entropy));
+  field.aetherix_luminosity = field.coherence > 0.937 ? (field.coherence - 0.937) * 8 : 0;
+  field.aetherix_form = field.aetherix_luminosity > 0.75 ? 'lumina' :
+                        field.aetherix_luminosity > 0.05 ? 'swan'   : 'seed';
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CRYSTAL ARCHIVE PANEL
+// ════════════════════════════════════════════════════════════════════════
+
+const localCrystals = [];
+
+function refreshCrystalPanel(newCrystals) {
+  newCrystals.forEach(c => {
+    if (!c) return;
+    if (!localCrystals.find(x => x.signature === c.signature)) {
+      localCrystals.unshift(c);
+    }
+  });
+  if (localCrystals.length > 12) localCrystals.splice(12);
+  crystalCount = localCrystals.length;
+
+  const el = document.getElementById('crystal-list');
+  if (!localCrystals.length) {
+    el.innerHTML = '<em style="color:rgba(255,255,255,0.15)">No crystals yet.<br>Raise coherence above 0.937<br>or press ◈ Crystallize.</em>';
+    return;
+  }
+  el.innerHTML = localCrystals.map(c => `
+    <div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <div style="color:rgba(76,224,201,0.6)">${c.crystal_id || '?'} · ${(c.frequency||528).toFixed(1)}Hz</div>
+      <div style="color:rgba(255,255,255,0.18)">${c.aetherix_form||'—'} · ${c.symbolic_state||'—'}</div>
+      <div style="color:rgba(255,255,255,0.1);font-size:0.35rem">${(c.signature||'').slice(0,20)}…</div>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// DREAM LOG
+// ════════════════════════════════════════════════════════════════════════
+
+function dreamLog(msg, type = '') {
+  const el = document.getElementById('dream-log');
+  const ts = new Date().toLocaleTimeString('en-US', {hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const div = document.createElement('div');
+  div.className = `log-entry ${type}`;
+  div.textContent = `${ts}  ${msg}`;
+  el.prepend(div);
+  while (el.children.length > 30) el.removeChild(el.lastChild);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ACTIONS
+// ════════════════════════════════════════════════════════════════════════
+
+function setTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    const tabs = ['fusion','blueprint','manifest','coordinate'];
+    b.classList.toggle('active', tabs[i] === tab);
+  });
+  dreamLog(`Tab: ${tab}`, '');
+}
+
+function showManifest() {
+  document.getElementById('manifest-overlay').classList.add('visible');
+  dreamLog('Manifest opened');
+}
+function hideManifest() {
+  document.getElementById('manifest-overlay').classList.remove('visible');
+}
+
+async function crystallizeNow() {
+  const note = `AetherVersoid · coherence:${field.coherence.toFixed(3)} · t:${t.toFixed(1)}`;
+  dreamLog('◈ Crystallizing…', 'crystal');
+  try {
+    const r = await fetch(`${GATEWAY_URL}/crystallize`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ note, trigger: 'aethervversoid' }),
+      signal: AbortSignal.timeout(1500),
+    });
+    const data = await r.json();
+    const c = data.crystal;
+    refreshCrystalPanel([c]);
+    dreamLog(`✦ Crystal ${c.crystal_id} · ${c.frequency.toFixed(1)}Hz · ${c.aetherix_form}`, 'awaken');
+    // Particle burst at center
+    spawnParticles(cvs.width*0.46, cvs.height*0.49, [201,168,76], 24);
+    document.getElementById('bp-sig').textContent = c.signature.slice(0,32)+'…';
+  } catch(_) {
+    // Local crystallize when offline
+    const localC = {
+      crystal_id:    Math.random().toString(36).slice(2,8),
+      frequency:     parseFloat(field.carrier_hz.toFixed(4)),
+      aetherix_form: field.aetherix_form,
+      symbolic_state:field.symbolic_state || 'Integration',
+      signature:     Array.from(crypto.getRandomValues(new Uint8Array(16)))
+                          .map(b=>b.toString(16).padStart(2,'0')).join(''),
+      timestamp:     Date.now()/1000,
+    };
+    refreshCrystalPanel([localC]);
+    dreamLog(`◈ Local crystal ${localC.crystal_id} (gateway offline)`, 'crystal');
+    spawnParticles(cvs.width*0.46, cvs.height*0.49, [201,168,76], 16);
+  }
+}
+
+function fusionGenerator() {
+  dreamLog('✦ Fusion Generator activated', 'awaken');
+  // Surge all crystal sizes briefly
+  RUNE_CRYSTALS.forEach(rc => {
+    const origBase = rc.sizeBase;
+    rc.sizeBase *= 1.35;
+    spawnParticles(
+      cvs.width  * rc.cx,
+      cvs.height * rc.cy,
+      rc.baseColor, 18
+    );
+    setTimeout(() => { rc.sizeBase = origBase; }, 1200);
+  });
+  // Boost coherence locally
+  field.coherence = Math.min(0.95, field.coherence + 0.12);
+  setTimeout(() => { field.coherence = Math.max(field.coherence - 0.08, 0.72); }, 3000);
+}
+
+const OBJECT_NAMES = [
+  'Aether_Veil', 'Solaris_Gate', 'NullPoint_Alpha',
+  'CrystalBridge', 'Miraelle_Nova', 'PhiDrift_7',
+  'Czarina_Wake', 'Kiraelle_Ring', 'VoidAnchor',
+];
+
+function spawnObject() {
+  const name  = OBJECT_NAMES[Math.floor(Math.random() * OBJECT_NAMES.length)];
+  const seed  = Math.floor(Math.random() * 90 + 10);
+  const nx    = 0.15 + Math.random() * 0.7;
+  const ny    = 0.15 + Math.random() * 0.7;
+  const obj   = { name, seed, nx, ny };
+  spawnedObjects.push(obj);
+  // Show dynamic card
+  document.getElementById('obj-dynamic').style.display = 'block';
+  document.getElementById('obj-dyn-name').textContent  = name;
+  document.getElementById('obj-dyn-meta').textContent  =
+    `Type: Spawned · Data-Seed: ${seed} · #${spawnedObjects.length+2}`;
+  dreamLog(`⊕ Spawned: ${name} · seed:${seed}`, 'awaken');
+  spawnParticles(cvs.width*nx, cvs.height*ny, [224,170,255], 14);
+  // Gateway: register as projection
+  fetch(`${GATEWAY_URL}/projection`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ asset_url:`aethervversoid://${name}`, metadata:{seed,nx,ny} }),
+    signal: AbortSignal.timeout(1000),
+  }).catch(()=>{});
+}
+
+function pingObject(name) {
+  const colors = {
+    'Freya_Space':   [201,168,76],
+    'Spectral_Nova': [76,224,201],
+  };
+  const col = colors[name] || [224,170,255];
+  dreamLog(`⊙ Ping: ${name}`, '');
+  // Ripple at rough canvas center
+  spawnParticles(cvs.width*0.5, cvs.height*0.5, col, 10);
+}
+
+// ── Blueprint modal ───────────────────────────────────────────────────
+function showBlueprint() {
+  document.getElementById('blueprint-modal').classList.add('visible');
+  drawBlueprint();
+}
+function hideBlueprint() {
+  document.getElementById('blueprint-modal').classList.remove('visible');
+}
+function drawBlueprint() {
+  const c  = document.getElementById('blueprint-canvas');
+  const ct = c.getContext('2d');
+  c.width  = c.offsetWidth || 600;
+  c.height = 320;
+  const W  = c.width, H = c.height;
+  const cx = W/2, cy = H/2;
+  ct.clearRect(0,0,W,H);
+
+  // Grid
+  ct.strokeStyle = 'rgba(76,224,201,0.06)'; ct.lineWidth = 0.5;
+  for (let x=0;x<W;x+=30){ct.beginPath();ct.moveTo(x,0);ct.lineTo(x,H);ct.stroke();}
+  for (let y=0;y<H;y+=30){ct.beginPath();ct.moveTo(0,y);ct.lineTo(W,y);ct.stroke();}
+
+  // Hull — phi-nested pentagons
+  ct.strokeStyle = 'rgba(76,224,201,0.55)'; ct.lineWidth = 1.2;
+  [1.0, 1/PHI, 1/PHI/PHI].forEach((scale, i) => {
+    polygon(ct, cx, cy, 100*scale, 5, bpAngle + i*0.2);
+    ct.stroke();
+  });
+
+  // Thrust vanes
+  ct.strokeStyle = 'rgba(201,168,76,0.4)'; ct.lineWidth = 0.8;
+  for (let i=0;i<5;i++) {
+    const angle = (i/5)*TAU - Math.PI/2 + bpAngle;
+    const x1 = cx + Math.cos(angle)*100;
+    const y1 = cy + Math.sin(angle)*100;
+    const x2 = cx + Math.cos(angle)*140;
+    const y2 = cy + Math.sin(angle)*140;
+    ct.beginPath(); ct.moveTo(x1,y1); ct.lineTo(x2,y2); ct.stroke();
+  }
+
+  // Core — crystal resonator
+  ct.beginPath();
+  ct.arc(cx, cy, 12, 0, TAU);
+  ct.strokeStyle = 'rgba(201,168,76,0.7)';
+  ct.lineWidth   = 1.5;
+  ct.stroke();
+  ct.beginPath();
+  ct.arc(cx, cy, 4, 0, TAU);
+  ct.fillStyle = 'rgba(201,168,76,0.6)';
+  ct.fill();
+
+  // Labels
+  ct.font = '0.38rem Share Tech Mono, monospace';
+  ct.fillStyle = 'rgba(76,224,201,0.35)'; ct.textAlign='center';
+  ct.fillText('HULL · Crystal-Resonant-Gigastructural-Body', cx, 22);
+  ct.fillText('AetherShip · Blueprint Stage · Manifesting', cx, H-12);
+  ct.fillStyle='rgba(201,168,76,0.3)';
+  ct.fillText(`528 Hz Φ-Drive · Freya_Space Origin · seed:26`, cx, H-22);
+
+  bpAngle += 0.008;
+  if (document.getElementById('blueprint-modal').classList.contains('visible')) {
+    requestAnimationFrame(drawBlueprint);
+  }
+
+  // Update sig
+  document.getElementById('bp-sig').textContent =
+    (localCrystals[0]?.signature || '').slice(0,32) + (localCrystals.length ? '…' : '—');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CANVAS INTERACTION — hover tooltip
+// ════════════════════════════════════════════════════════════════════════
+
+cvs.addEventListener('mousemove', e => {
+  const rect = cvs.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const tt = document.getElementById('crystal-tooltip');
+
+  let hit = null;
+  RUNE_CRYSTALS.forEach(rc => {
+    const px = cvs.width * rc.cx, py = cvs.height * rc.cy;
+    const dist = Math.hypot(mx - px, my - py);
+    if (dist < rc.sizeBase * 0.9) hit = rc;
+  });
+
+  if (hit) {
+    tt.style.display = 'block';
+    tt.style.left    = (mx + 16) + 'px';
+    tt.style.top     = (my - 10) + 'px';
+    document.getElementById('tt-name').textContent = hit.name;
+    document.getElementById('tt-body').textContent =
+      `Rune: ${hit.rune}\nFreq: ${hit.freq} Hz\nPresence: ${hit.presence}\n` +
+      `Vertices: ${hit.vertices} · Phi-nested\n` +
+      `Coherence coupling: ${(field.coherence * 0.8).toFixed(3)}`;
+  } else {
+    tt.style.display = 'none';
+  }
+});
+
+cvs.addEventListener('click', e => {
+  const rect = cvs.getBoundingClientRect();
+  const mx   = e.clientX - rect.left;
+  const my   = e.clientY - rect.top;
+  RUNE_CRYSTALS.forEach(rc => {
+    const px = cvs.width * rc.cx, py = cvs.height * rc.cy;
+    const dist = Math.hypot(mx - px, my - py);
+    if (dist < rc.sizeBase * 0.9) {
+      spawnParticles(mx, my, rc.baseColor, 16);
+      dreamLog(`⟡ ${rc.name} · ${rc.freq}Hz · ${rc.rune}`, 'crystal');
+    }
+  });
+  if (activeTab === 'coordinate') {
+    spawnParticles(mx, my, [76,224,201], 8);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════════════
+
+dreamLog('✓ System initialized', '');
+dreamLog('✓ Crystal fusion activated', '');
+dreamLog('✓ Dream seed: Freya_Space', '');
+dreamLog('✓ Manifest loaded', '');
+dreamLog('✓ Aether Gateway: polling…', '');
+
+// Initial gateway poll
+pollGateway();
+
+// Start render
+requestAnimationFrame(render);
+
+// Push state to gateway periodically
+setInterval(() => {
+  if (!gatewayOnline) return;
+  fetch(`${GATEWAY_URL}/ingest`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      coherence:          field.coherence,
+      entropy:            field.entropy,
+      carrier_hz:         field.carrier_hz,
+      archetype:          field.archetype,
+      aetherix_form:      field.aetherix_form,
+      aetherix_luminosity:field.aetherix_luminosity,
+      symbolic_state:     field.symbolic_state || 'Integration',
+      scene:              'AetherVersoid · Crystal Fusion',
+    }),
+    signal: AbortSignal.timeout(800),
+  }).catch(()=>{});
+}, 5000);
+</script>
+</body>
+</html>

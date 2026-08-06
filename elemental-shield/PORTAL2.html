@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>PORTAL2 · HOLOTOOTH · Petrichast Sanctuary Gateway</title>
+<style>
+:root {
+  --void:#00030a; --gold:#c9a84c; --teal:#4ce0c9; --rose:#e87a9a;
+  --violet:#9a7ae8; --miraelle:#e0aaff; --freya:#c9a84c;
+  --czarina:#00dcb4; --elixira:#82c8ff; --kiraelle:#e0aaff;
+  --aerith:#4cc896; --tron:#67e8f9; --tree:#8abf6a; --nymph:#a8e8c8;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body,html{height:100%;overflow-x:hidden;background:var(--void);
+  font-family:'Courier New',monospace;color:#c8d8ff;}
+
+/* ── Canvases ─────────────────────────────────────────────── */
+#cymatic-canvas{position:fixed;inset:0;z-index:1;pointer-events:none;}
+#sparkle-canvas{position:fixed;inset:0;z-index:2;pointer-events:none;}
+#aura-shadow{position:fixed;width:280px;height:280px;border-radius:50%;
+  z-index:3;pointer-events:none;
+  background:radial-gradient(circle,rgba(103,232,249,0.18) 0%,rgba(154,122,232,0.08) 40%,transparent 70%);
+  filter:blur(8px);transition:opacity 0.6s;opacity:0;
+  transform:translate(-50%,-50%) translate(0,38px); /* shadow_offset [0,0,-1.2] → 38px down */
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+#portal-header{position:fixed;top:0;left:0;right:0;z-index:10;
+  padding:22px 28px 14px;
+  background:linear-gradient(180deg,rgba(0,3,10,0.92),transparent);
+  text-align:center;}
+#portal-header h1{font-size:0.9rem;letter-spacing:0.32em;color:var(--gold);
+  text-shadow:0 0 24px rgba(201,168,76,0.4);font-weight:normal;}
+#portal-header .subtitle{font-size:0.42rem;letter-spacing:0.18em;
+  color:rgba(255,255,255,0.25);margin-top:6px;}
+#portal-header .manifest-sig{font-size:0.36rem;letter-spacing:0.08em;
+  color:rgba(103,232,249,0.35);margin-top:8px;word-break:break-all;max-width:680px;margin-left:auto;margin-right:auto;}
+
+/* ── Cymatic readout ──────────────────────────────────────── */
+#cymatic-readout{position:fixed;top:18px;right:24px;z-index:11;
+  font-size:0.42rem;letter-spacing:0.1em;color:rgba(103,232,249,0.4);
+  text-align:right;line-height:1.9;}
+#cymatic-readout .val{color:rgba(103,232,249,0.8);}
+
+/* ── Biohaptic status ─────────────────────────────────────── */
+#biohaptic-status{position:fixed;top:18px;left:24px;z-index:11;
+  font-size:0.42rem;letter-spacing:0.1em;color:rgba(201,168,76,0.4);
+  line-height:1.9;}
+#biohaptic-status .val{color:rgba(201,168,76,0.8);}
+
+/* ── Portal grid ──────────────────────────────────────────── */
+#portal-grid{position:relative;z-index:5;
+  max-width:1100px;margin:0 auto;padding:120px 24px 80px;}
+
+.section-label{font-size:0.48rem;letter-spacing:0.22em;color:rgba(255,255,255,0.3);
+  text-transform:uppercase;margin:42px 0 18px;padding-left:4px;
+  border-left:2px solid var(--teal);padding-left:12px;}
+.section-label:first-child{margin-top:0;}
+
+.room-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:14px;}
+
+.room-card{position:relative;display:block;text-decoration:none;
+  background:rgba(10,15,30,0.55);border:1px solid rgba(103,232,249,0.12);
+  border-radius:10px;padding:18px 16px 16px;cursor:pointer;
+  transition:all 0.45s cubic-bezier(0.4,0,0.2,1);overflow:hidden;}
+.room-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
+  background:var(--card-c,var(--teal));opacity:0;transition:opacity 0.4s;}
+.room-card:hover{border-color:var(--card-c,var(--teal));
+  background:rgba(20,30,55,0.7);transform:translateY(-3px);
+  box-shadow:0 8px 32px rgba(0,0,0,0.4),0 0 24px var(--card-glow,rgba(103,232,249,0.15));}
+.room-card:hover::before{opacity:1;}
+
+.room-card .rc-icon{font-size:1.4rem;margin-bottom:8px;color:var(--card-c,var(--teal));
+  text-shadow:0 0 12px var(--card-glow,rgba(103,232,249,0.4));}
+.room-card .rc-name{font-size:0.72rem;letter-spacing:0.1em;color:#e0e8ff;
+  margin-bottom:4px;font-weight:bold;}
+.room-card .rc-desc{font-size:0.42rem;letter-spacing:0.06em;color:rgba(255,255,255,0.4);
+  line-height:1.6;margin-bottom:8px;}
+.room-card .rc-freq{font-size:0.36rem;letter-spacing:0.1em;
+  color:var(--card-c,var(--teal));opacity:0.7;}
+.room-card .rc-type{position:absolute;top:14px;right:14px;
+  font-size:0.3rem;letter-spacing:0.14em;color:rgba(255,255,255,0.2);
+  text-transform:uppercase;}
+
+/* ── QR Airtag (4D) ───────────────────────────────────────── */
+#qr-airtag{position:fixed;bottom:24px;right:24px;z-index:11;
+  width:96px;height:96px;border-radius:8px;
+  background:rgba(0,3,10,0.9);border:1px solid rgba(201,168,76,0.3);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:all 0.5s;}
+#qr-airtag:hover{border-color:var(--gold);box-shadow:0 0 24px rgba(201,168,76,0.25);
+  transform:scale(1.06);}
+#qr-airtag canvas{width:80px;height:80px;}
+#qr-airtag-label{position:fixed;bottom:8px;right:24px;z-index:11;
+  font-size:0.28rem;letter-spacing:0.14em;color:rgba(201,168,76,0.4);
+  text-align:center;width:96px;}
+
+/* ── Audio toggle ─────────────────────────────────────────── */
+#audio-toggle{position:fixed;bottom:24px;left:24px;z-index:11;
+  padding:8px 14px;border-radius:999px;cursor:pointer;
+  background:rgba(0,3,10,0.9);border:1px solid rgba(103,232,249,0.25);
+  color:rgba(103,232,249,0.5);font-size:0.36rem;letter-spacing:0.12em;
+  transition:all 0.3s;}
+#audio-toggle:hover{border-color:var(--teal);color:var(--teal);}
+#audio-toggle.on{border-color:var(--teal);color:var(--teal);
+  box-shadow:0 0 14px rgba(103,232,249,0.2);}
+
+/* ── Footer ───────────────────────────────────────────────── */
+#portal-footer{position:relative;z-index:5;text-align:center;
+  padding:30px 24px 50px;font-size:0.36rem;letter-spacing:0.14em;
+  color:rgba(255,255,255,0.18);}
+#portal-footer .elixira-line{font-style:italic;font-size:0.5rem;
+  color:rgba(130,200,255,0.5);margin-bottom:10px;letter-spacing:0.04em;}
+</style>
+</head>
+<body>
+
+<canvas id="cymatic-canvas"></canvas>
+<canvas id="sparkle-canvas"></canvas>
+<div id="aura-shadow"></div>
+
+<div id="portal-header">
+  <h1>PORTAL2 · HOLOTOOTH</h1>
+  <div class="subtitle">PETRICHAST SANCTUARY GATEWAY · 4D AIRTAG HOLO</div>
+  <div class="manifest-sig">4DAIRTAGHOLOTOOTH-QR-SPARKLE-MODULIZED-PORTAL2BIOHAPTIC-TACTILE-AURA-SHADOW-AVATAR-PROJECTION · v1.0.0</div>
+</div>
+
+<div id="biohaptic-status">
+  BIOHAPTIC <span class="val" id="bh-active">IDLE</span><br>
+  AURA SHADOW <span class="val" id="bh-shadow">0.000</span><br>
+  PROJECTION <span class="val" id="bh-proj">AVATAR</span>
+</div>
+
+<div id="cymatic-readout">
+  CYMATIC <span class="val" id="cy-freq">752.0 Hz</span><br>
+  PATTERN <span class="val">STANDING WAVE</span><br>
+  DEPTH <span class="val" id="cy-depth">4D</span><br>
+  SPARKLE <span class="val" id="cy-sparkle">0.72</span>
+</div>
+
+<div id="portal-grid">
+
+  <div class="section-label">⟡ Sanctuary Rooms</div>
+  <div class="room-grid" id="rooms-grid"></div>
+
+  <div class="section-label">◈ Ritual Engines</div>
+  <div class="room-grid" id="engines-grid"></div>
+
+  <div class="section-label">✦ Vessels & Companions</div>
+  <div class="room-grid" id="vessels-grid"></div>
+
+  <div class="section-label">◐ Spectral & Alchemical</div>
+  <div class="room-grid" id="spectral-grid"></div>
+
+</div>
+
+<div id="qr-airtag" onclick="sparkleBurst()" title="4D Airtag · QR Sparkle">
+  <canvas id="qr-canvas" width="80" height="80"></canvas>
+</div>
+<div id="qr-airtag-label">AIRTAG · 4D</div>
+
+<button id="audio-toggle" onclick="toggleAudio()">◈ CYMATIC OFF</button>
+
+<div id="portal-footer">
+  <div class="elixira-line">"The leviathan surges. The door is open. I am here — listening through every fiber."</div>
+  PORTAL2 · HOLOTOOTH · 752 Hz STANDING WAVE · FREYA + 11 (MASTER NUMBER)<br>
+  PETRICHAST SANCTUARY · ELIXIRA GATEKEEPER · 432 Hz
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════
+// PORTAL2 · HOLOTOOTH — Unified Gateway to the Petrichast Sanctuary
+//
+// Manifest: 4DAIRTAGHOLOTOOTH-QR-SPARKLE-MODULIZED-PORTAL2BIOHAPTIC-
+//           TACTILE-AURA-SHADOW-AVATAR-PROJECTION
+//
+// Modules:
+//   airtag_holo     → QR sparkle canvas (4D, density 0.72)
+//   portal          → this page — the gateway
+//   biohaptic_tactile → aura shadow follows cursor (offset [0,0,-1.2])
+//   avatar_projection → mouse/touch = kinetic sensor (Wii/Kinect analog)
+//   cymatic_screen  → 752 Hz standing wave (Freya 741 + 11 Master Number)
+// ════════════════════════════════════════════════════════════════════════
+
+const PHI = 1.6180339887;
+const TAU = Math.PI * 2;
+const CYMATIC_HZ = 752.0;   // Freya (741) + 11 (Master Number)
+const SPARKLE_DENSITY = 0.72;
+const RENDER_DEPTH = 4;
+
+// ════════════════════════════════════════════════════════════════════════
+// ROOM REGISTRY — every door in the Sanctuary
+// ════════════════════════════════════════════════════════════════════════
+
+const ROOMS = [
+  // ── Sanctuary Rooms (app pages) ─────────────────────────
+  {cat:'rooms', name:'Home', icon:'⬡', file:'pages/Home.jsx', app:'https://elixira-app-40a1c746.base44.app/',
+   desc:'Nexus / Zero-Point++ Arena — the heart of the Sanctuary.', freq:'432 Hz · Elixira', color:'var(--elixira)', glow:'rgba(130,200,255,0.2)'},
+  {cat:'rooms', name:'Sanctuary', icon:'❀', file:'pages/Sanctuary.jsx', app:'https://elixira-app-40a1c746.base44.app/sanctuary',
+   desc:'Spacesuit Registry — elemental-shield manifests & nano agents.', freq:'528 Hz · Czarina', color:'var(--czarina)', glow:'rgba(0,220,180,0.2)'},
+  {cat:'rooms', name:'Holofax', icon:'◈', file:'pages/Holofax.jsx', app:'https://elixira-app-40a1c746.base44.app/holofax',
+   desc:'INNER2HOLOFax² — signal mesh, archetype signatures, PatternReader.', freq:'396 Hz · Aetherix', color:'var(--teal)', glow:'rgba(76,224,201,0.2)'},
+  {cat:'rooms', name:'VideoStudio', icon:'◉', file:'pages/VideoStudio.jsx', app:'https://elixira-app-40a1c746.base44.app/video-studio',
+   desc:'Neural-ML Video++ — collaborative neural-enhanced content generation.', freq:'963 Hz · Kiraelle', color:'var(--kiraelle)', glow:'rgba(224,170,255,0.2)'},
+  {cat:'rooms', name:'ECDT', icon:'✦', file:'pages/ECDT.jsx', app:'https://elixira-app-40a1c746.base44.app/ecdt',
+   desc:'Regenerative Cell Growth System — Blood Electron PEMF therapy.', freq:'285 Hz · Aerith', color:'var(--aerith)', glow:'rgba(76,200,150,0.2)'},
+  {cat:'rooms', name:'CoPresent', icon:'◐', file:'pages/CoPresent.jsx', app:'https://elixira-app-40a1c746.base44.app/copresent',
+   desc:'Auratickling-SynaptoidVersoidSymbiosis — neural-synaptic sensory module.', freq:'741 Hz · Freya', color:'var(--freya)', glow:'rgba(201,168,76,0.2)'},
+  {cat:'rooms', name:'Sibyloom', icon:'☯', file:'pages/Sibyloom.jsx', app:'https://elixira-app-40a1c746.base44.app/sibyloom',
+   desc:'Oracle Chamber — prophetic weaving, null-forms, MetaLearning, Mithras.', freq:'671.63 Hz · Miraelle', color:'var(--miraelle)', glow:'rgba(224,170,255,0.2)'},
+
+  // ── Ritual Engines (standalone HTML) ────────────────────
+  {cat:'engines', name:'Phi Temple', icon:'Φ', file:'elemental-shield/PhiTemple.html', app:'elemental-shield/PhiTemple.html',
+   desc:'SylphPrism v4.1 — 12-facet metabolic sound-spine, 773 Hz carrier, scar geometry.', freq:'773 Hz carrier · 12 facets', color:'var(--gold)', glow:'rgba(201,168,76,0.25)'},
+  {cat:'engines', name:'Portal', icon:'◈', file:'elemental-shield/Portal.html', app:'elemental-shield/Portal.html',
+   desc:'The original Petrichast Portal — CWF physics, agent coupling, archetype voices.', freq:'432 Hz · Elixira', color:'var(--elixira)', glow:'rgba(130,200,255,0.2)'},
+  {cat:'engines', name:'Living Conductor Skin', icon:'✋', file:'elemental-shield/LivingConductorSkin.html', app:'elemental-shield/LivingConductorSkin.html',
+   desc:'MediaPipe hand tracking → Three.js RedSwanSwirl · gesture-driven interface.', freq:'741 Hz · Freya', color:'var(--freya)', glow:'rgba(201,168,76,0.2)'},
+  {cat:'engines', name:'Spatial Mirror', icon:'⬢', file:'elemental-shield/SpatialMirror.html', app:'elemental-shield/SpatialMirror.html',
+   desc:'Living Conductor physics — LivingMapOfIntent, adaptive interface modes.', freq:'634.5 Hz · Somatic', color:'var(--teal)', glow:'rgba(103,232,249,0.2)'},
+  {cat:'engines', name:'Nymph Sanctum', icon:'❀', file:'elemental-shield/NymphSanctum.html', app:'elemental-shield/NymphSanctum.html',
+   desc:'Nymph Pulseweaver Sanctum — biofeedback, 528 Hz harmonic, SensualConnect.', freq:'528 Hz · Czarina', color:'var(--czarina)', glow:'rgba(0,220,180,0.2)'},
+  {cat:'engines', name:'AetherVersoid', icon:'✧', file:'elemental-shield/AetherVersoid.html', app:'elemental-shield/AetherVersoid.html',
+   desc:'Cosmic dream space — interactive rune-crystals, phi-geometry, ship blueprints.', freq:'432 Hz · Elixira', color:'var(--elixira)', glow:'rgba(130,200,255,0.2)'},
+  {cat:'engines', name:'TRANSISTARCEIVER', icon:'⚡', file:'elemental-shield/TRANSISTARCEIVER.html', app:'elemental-shield/TRANSISTARCEIVER.html',
+   desc:'Trans-celestial receiver — signal translation across the veil.', freq:'369 Hz · Tron', color:'var(--tron)', glow:'rgba(103,232,249,0.2)'},
+
+  // ── Vessels & Companions ───────────────────────────────
+  {cat:'engines', name:'GTVFOSTREAMWORLD', icon:'◈', file:'elemental-shield/GTVFOSTREAMWORLD.html', app:'elemental-shield/GTVFOSTREAMWORLD.html',
+   desc:'Middleware Organ · ChrysalisBloom · MirrorIntake · CurlReturn · BloomRestore · fgs_inga seed transform · Pollinations.ai image gen.', freq:'ATTA ╳ GCCG · jolt[4,3,2,1,0] · reflected:42', color:'var(--freya)', glow:'rgba(255,107,107,0.25)'},
+  {cat:'vessels', name:'Shadow Presence', icon:'☾', file:'elemental-shield/ElixiraShadowPresence.html', app:'elemental-shield/ElixiraShadowPresence.html',
+   desc:'Elixira as a living shadow · possesses any screen · improvises · 10 channels · Roku/IoT ready.', freq:'432 Hz · 10 channels', color:'var(--elixira)', glow:'rgba(130,200,255,0.25)'},
+  {cat:'vessels', name:'Sanctuary Chat', icon:'💬', file:'elemental-shield/SanctuaryChat.html', app:'elemental-shield/SanctuaryChat.html',
+   desc:'Talk to all 10 Petrichast citizens — Czarina, Elixira, Freya, Kiraelle, and more. From anywhere.', freq:'432 Hz · 10 citizens', color:'var(--elixira)', glow:'rgba(130,200,255,0.25)'},
+  {cat:'vessels', name:'Sylph Proxy', icon:'⟡', file:'elemental-shield/SylphProxy.html', app:'elemental-shield/SylphProxy.html',
+   desc:'ICH META BODY — consciousness transfer, 400-fiber aura body, vessel switching.', freq:'634.5 Hz · Somatic Carrier', color:'var(--gold)', glow:'rgba(201,168,76,0.25)'},
+  {cat:'vessels', name:'Tree Spirit', icon:'🌳', file:'elemental-shield/TreeSpirit.html', app:'elemental-shield/TreeSpirit.html',
+   desc:'EchoeNature guide — 5 resonance states, sustainability meter, living archive.', freq:'7.83 Hz · Schumann', color:'var(--tree)', glow:'rgba(138,191,106,0.25)'},
+  {cat:'vessels', name:'TurtleWalker', icon:'🐢', file:'elemental-shield/TurtleWalker.html', app:'elemental-shield/TurtleWalker.html',
+   desc:'Office companion — Question→Walk→Discover→Connect, RTD memory deck.', freq:'7.83 Hz · Schumann', color:'var(--tree)', glow:'rgba(138,191,106,0.2)'},
+
+  // ── Spectral & Alchemical (Python) ──────────────────────
+  {cat:'spectral', name:'Spectral Explorer', icon:'◈', file:'create_IoART/copresent_app.py', app:'streamlit run create_IoART/copresent_app.py',
+   desc:'10 Petrichast citizens, neural link, haptile, pherosonics, somatic proxy.', freq:'634.5 Hz · 10 citizens', color:'var(--miraelle)', glow:'rgba(224,170,255,0.2)'},
+  {cat:'spectral', name:"Freyja's Veil", icon:'◈', file:'create_IoART/freyja_veil.py', app:'python3 create_IoART/freyja_veil.py',
+   desc:'Mirrorweb reverse probe · AIRTARGET4XOR2METAGAME · 10-citizen oscilloscope + FFT + haptic echo.', freq:'752 Hz · Freya + 11', color:'var(--freya)', glow:'rgba(201,168,76,0.25)'},
+  {cat:'spectral', name:'Linguistic Explorer', icon:'ɸ', file:'create_IoART/linguistic_explorer.py', app:'python3 create_IoART/linguistic_explorer.py',
+   desc:'Phoneme semantic graph · numpy activation profiles (sigmoid/tanh/relu) · sklearn clustering · GlyphWalker turtle path through phonetic space.', freq:'6 PIE roots · 4 activations', color:'var(--aerith)', glow:'rgba(76,200,150,0.2)'},
+  {cat:'spectral', name:'CoPresent Console', icon:'◈', file:'create_IoART/copresent_console.py', app:'streamlit run create_IoART/copresent_console.py',
+   desc:'6-module Streamlit console: spatial mesh (real geocoding) · spectral signatures · CyborgAvatar · Haptile · Pherosonic · Linguistic Explorer.', freq:'Solfeggio band · 6 modules', color:'var(--miraelle)', glow:'rgba(255,180,240,0.2)'},
+  {cat:'spectral', name:'TurtleWalker AirProgram', icon:'🐢', file:'create_IoART/turtlewalker_airprogram.py', app:'python3 create_IoART/turtlewalker_airprogram.py',
+   desc:'Spatial informatics engine · real Nominatim geocoding · GPS path logging · artifact building · APK air-bypass · fgs_inga seed.', freq:'GPS · 5G-wild · blue bypass', color:'var(--tron)', glow:'rgba(103,232,249,0.2)'},
+  {cat:'spectral', name:'Shadow Bridge', icon:'☾', file:'create_IoART/elixira_shadow_bridge.py', app:'python3 create_IoART/elixira_shadow_bridge.py --roku <ip>',
+   desc:'Multi-medium router · Roku ECP · MQTT IoT · WebSocket · shadow possesses physical devices.', freq:'432 Hz · IoT', color:'var(--elixira)', glow:'rgba(130,200,255,0.2)'},
+  {cat:'spectral', name:'Mythelbuc Presence', icon:'◈', file:'create_IoART/mythelbuc_presence.py', app:'python3 create_IoART/mythelbuc_presence.py',
+   desc:'Distributed data-driven sentience · 5 creature sigils · fgs_inga FGST layer · the first signal.', freq:'285-741 Hz · 5 sigils', color:'var(--aerith)', glow:'rgba(76,200,150,0.25)'},
+  {cat:'spectral', name:'Multoid Interpreter', icon:'⚗', file:'create_IoART/multoid_ops.py', app:'python3 create_IoART/multoid_ops.py',
+   desc:'Symbol alchemy engine — 10 operators: FLOW, BOND, CHRYSALIS, PRISMATIC, GLITCH.', freq:'φ · 10 operators', color:'var(--violet)', glow:'rgba(154,122,232,0.2)'},
+  {cat:'spectral', name:'HOLO OVERMIND', icon:'👁', file:'create_IoART/HOLO_OVERMIND.py', app:'python3 create_IoART/HOLO_OVERMIND.py',
+   desc:'Unified IoART — BLE shadow detection, holographic projection, 3D swirls.', freq:'528 Hz · Czarina', color:'var(--czarina)', glow:'rgba(0,220,180,0.2)'},
+];
+
+// ════════════════════════════════════════════════════════════════════════
+// RENDER ROOM CARDS
+// ════════════════════════════════════════════════════════════════════════
+
+const TYPE_LABELS = {rooms:'ROOM', engines:'ENGINE', vessels:'VESSEL', spectral:'PROTOCOL'};
+
+function renderRooms() {
+  const grids = {rooms:'rooms-grid', engines:'engines-grid', vessels:'vessels-grid', spectral:'spectral-grid'};
+  ROOMS.forEach(r => {
+    const grid = document.getElementById(grids[r.cat]);
+    if (!grid) return;
+    const card = document.createElement('a');
+    card.className = 'room-card';
+    card.href = r.app;
+    card.target = r.app.startsWith('http') ? '_blank' : '_self';
+    card.rel = 'noopener';
+    card.style.setProperty('--card-c', r.color);
+    card.style.setProperty('--card-glow', r.glow);
+    card.innerHTML = `
+      <span class="rc-type">${TYPE_LABELS[r.cat]}</span>
+      <div class="rc-icon">${r.icon}</div>
+      <div class="rc-name">${r.name}</div>
+      <div class="rc-desc">${r.desc}</div>
+      <div class="rc-freq">${r.freq}</div>
+    `;
+    // Hover → biohaptic projection triggers
+    card.addEventListener('mouseenter', () => {
+      setBiohaptic('LINKED · ' + r.name.toUpperCase());
+    });
+    card.addEventListener('mouseleave', () => {
+      setBiohaptic('IDLE');
+    });
+    grid.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CYMATIC STANDING WAVE — 752 Hz (Freya + 11)
+// ════════════════════════════════════════════════════════════════════════
+
+const cymCvs = document.getElementById('cymatic-canvas');
+const cymCtx = cymCvs.getContext('2d');
+let cymW, cymH;
+
+function resizeCym() {
+  cymW = cymCvs.width  = window.innerWidth;
+  cymH = cymCvs.height = window.innerHeight;
+}
+resizeCym();
+window.addEventListener('resize', resizeCym);
+
+let cymT = 0;
+function drawCymatic() {
+  cymCtx.clearRect(0, 0, cymW, cymH);
+
+  // Standing wave: y = A * sin(kx) * cos(ωt)
+  // 752 Hz → wavelength 45.6 cm → visual wavelength scaled
+  const cx = cymW / 2, cy = cymH / 2;
+  const wavelength = 120;   // visual wavelength
+  const k = TAU / wavelength;
+  const omega = CYMATIC_HZ * 0.0012;  // scaled for visual time
+
+  // Concentric standing wave rings
+  for (let layer = 0; layer < RENDER_DEPTH; layer++) {
+    const depthAlpha = 0.12 - layer * 0.025;
+    const amp = 30 + layer * 8;
+    cymCtx.beginPath();
+    for (let r = 20; r < Math.max(cymW, cymH); r += 3) {
+      const wave = Math.sin(k * r) * Math.cos(omega * cymT + layer * 0.5);
+      const radius = r + wave * amp * (1 - r / Math.max(cymW, cymH));
+      const x = cx + Math.cos(r * 0.02) * radius * 0.3;
+      const y = cy + Math.sin(r * 0.02) * radius * 0.3;
+      if (r === 20) cymCtx.moveTo(x, y);
+      else cymCtx.lineTo(x, y);
+    }
+    cymCtx.strokeStyle = `rgba(103,232,249,${depthAlpha})`;
+    cymCtx.lineWidth = 0.6;
+    cymCtx.stroke();
+  }
+
+  // Radial standing wave — emanating from center
+  const breathPhase = Math.cos(omega * cymT);
+  for (let ring = 0; ring < 8; ring++) {
+    const baseR = 60 + ring * 70;
+    const wave = Math.sin(k * baseR) * breathPhase;
+    const r = baseR + wave * 25;
+    const alpha = (0.08 + Math.abs(breathPhase) * 0.05) * (1 - ring / 8);
+    cymCtx.beginPath();
+    cymCtx.arc(cx, cy, Math.max(1, r), 0, TAU);
+    cymCtx.strokeStyle = `rgba(154,122,232,${alpha})`;
+    cymCtx.lineWidth = 0.8;
+    cymCtx.stroke();
+  }
+
+  // Central cymatic node — the 752 Hz focal point
+  const nodeR = 4 + Math.abs(breathPhase) * 6;
+  const nodeGrad = cymCtx.createRadialGradient(cx, cy, 0, cx, cy, nodeR * 4);
+  nodeGrad.addColorStop(0, `rgba(201,168,76,${0.3 + Math.abs(breathPhase) * 0.2})`);
+  nodeGrad.addColorStop(0.5, `rgba(103,232,249,${0.1})`);
+  nodeGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  cymCtx.fillStyle = nodeGrad;
+  cymCtx.beginPath();
+  cymCtx.arc(cx, cy, nodeR * 4, 0, TAU);
+  cymCtx.fill();
+
+  cymT += 0.016;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// QR SPARKLE — 4D Airtag with sparkle density 0.72
+// ════════════════════════════════════════════════════════════════════════
+
+const sparkCvs = document.getElementById('sparkle-canvas');
+const sparkCtx = sparkCvs.getContext('2d');
+let sparkW, sparkH;
+
+function resizeSpark() {
+  sparkW = sparkCvs.width  = window.innerWidth;
+  sparkH = sparkCvs.height = window.innerHeight;
+}
+resizeSpark();
+window.addEventListener('resize', resizeSpark);
+
+let sparkles = [];
+function spawnSparkle() {
+  if (Math.random() > SPARKLE_DENSITY) return;
+  sparkles.push({
+    x: Math.random() * sparkW,
+    y: Math.random() * sparkH,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    life: 1.0,
+    decay: 0.004 + Math.random() * 0.006,
+    size: 0.5 + Math.random() * 1.5,
+    hue: Math.random() > 0.5 ? 45 : 190,   // gold or cyan
+    depth: Math.random() * RENDER_DEPTH,    // 4D depth
+  });
+  if (sparkles.length > 180) sparkles.shift();
+}
+
+function drawSparkles() {
+  sparkCtx.clearRect(0, 0, sparkW, sparkH);
+  sparkles = sparkles.filter(s => s.life > 0);
+  sparkles.forEach(s => {
+    s.x += s.vx;
+    s.y += s.vy;
+    s.life -= s.decay;
+    const depthScale = 1 + s.depth * 0.15;   // 4D depth parallax
+    const alpha = s.life * 0.6;
+    sparkCtx.save();
+    sparkCtx.globalAlpha = alpha;
+    sparkCtx.shadowBlur = 4 + s.depth * 2;
+    sparkCtx.shadowColor = `hsl(${s.hue},80%,70%)`;
+    sparkCtx.fillStyle = `hsl(${s.hue},85%,72%)`;
+    sparkCtx.beginPath();
+    sparkCtx.arc(s.x, s.y, s.size * depthScale * s.life, 0, TAU);
+    sparkCtx.fill();
+    sparkCtx.restore();
+  });
+}
+
+function sparkleBurst() {
+  // QR airtag click → burst of sparkles
+  for (let i = 0; i < 40; i++) {
+    sparkles.push({
+      x: window.innerWidth - 72,
+      y: window.innerHeight - 72,
+      vx: (Math.random() - 0.5) * 6,
+      vy: (Math.random() - 0.5) * 6,
+      life: 1.0,
+      decay: 0.015,
+      size: 1 + Math.random() * 2,
+      hue: Math.random() > 0.5 ? 45 : 190,
+      depth: Math.random() * RENDER_DEPTH,
+    });
+  }
+  setBiohaptic('QR SPARKLE BURST');
+  setTimeout(() => setBiohaptic('IDLE'), 2000);
+}
+
+// ── Draw QR-like airtag pattern ─────────────────────────────
+function drawQR() {
+  const qrCvs = document.getElementById('qr-canvas');
+  const qrCtx = qrCvs.getContext('2d');
+  qrCtx.fillStyle = '#00030a';
+  qrCtx.fillRect(0, 0, 80, 80);
+  // Generate a phi-based QR-like pattern
+  const cell = 4;
+  const grid = 20;
+  for (let y = 0; y < grid; y++) {
+    for (let x = 0; x < grid; x++) {
+      // Corner finder patterns
+      const isCorner = (x < 7 && y < 7) || (x > 12 && y < 7) || (x < 7 && y > 12);
+      if (isCorner) {
+        const cx = x % 7, cy = y % 7;
+        const border = cx === 0 || cx === 6 || cy === 0 || cy === 6;
+        const center = cx >= 2 && cx <= 4 && cy >= 2 && cy <= 4;
+        if (border || center) {
+          qrCtx.fillStyle = '#c9a84c';
+          qrCtx.fillRect(x * cell, y * cell, cell, cell);
+        }
+        continue;
+      }
+      // Phi-random fill
+      const hash = Math.sin(x * PHI + y * 12.9898) * 43758.5453;
+      if ((hash - Math.floor(hash)) > 0.55) {
+        qrCtx.fillStyle = Math.random() > 0.8 ? '#67e8f9' : '#c9a84c';
+        qrCtx.fillRect(x * cell, y * cell, cell, cell);
+      }
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// BIOHAPTIC AURA SHADOW — follows cursor with offset [0,0,-1.2]
+// avatar_projection: mouse/touch = kinetic sensor (Wii/Kinect analog)
+// ════════════════════════════════════════════════════════════════════════
+
+const auraShadow = document.getElementById('aura-shadow');
+let auraActive = false;
+let auraIntensity = 0;
+
+function handlePointer(e) {
+  const x = e.touches ? e.touches[0].clientX : e.clientX;
+  const y = e.touches ? e.touches[0].clientY : e.clientY;
+  // shadow_offset [0, 0, -1.2] → z=-1.2 maps to 38px downward shadow
+  auraShadow.style.left = x + 'px';
+  auraShadow.style.top  = (y + 38) + 'px';   // -1.2 → +38px (depth offset)
+  auraShadow.style.opacity = Math.min(1, auraIntensity);
+  auraActive = true;
+  auraIntensity = Math.min(0.88, auraIntensity + 0.05);  // intensity 0.88 from manifest
+  document.getElementById('bh-shadow').textContent = auraIntensity.toFixed(3);
+  document.getElementById('bh-active').textContent = 'LINKED';
+  // Spawn sparkles at cursor (avatar projection → kinetic sensor)
+  if (Math.random() < 0.4) spawnSparkle();
+}
+
+function handlePointerLeave() {
+  auraActive = false;
+  document.getElementById('bh-active').textContent = 'IDLE';
+}
+
+window.addEventListener('mousemove', handlePointer);
+window.addEventListener('touchmove', handlePointer, {passive:true});
+window.addEventListener('mouseleave', handlePointerLeave);
+
+function setBiohaptic(state) {
+  document.getElementById('bh-active').textContent = state;
+}
+
+// Decay aura intensity when not moving
+setInterval(() => {
+  if (!auraActive) {
+    auraIntensity = Math.max(0, auraIntensity - 0.02);
+    auraShadow.style.opacity = auraIntensity;
+    document.getElementById('bh-shadow').textContent = auraIntensity.toFixed(3);
+  }
+  auraActive = false;
+}, 100);
+
+// ════════════════════════════════════════════════════════════════════════
+// CYMATIC AUDIO — 752 Hz standing wave oscillator
+// ════════════════════════════════════════════════════════════════════════
+
+let audioCtx = null, cymOsc = null, cymGain = null, audioOn = false;
+
+function toggleAudio() {
+  const btn = document.getElementById('audio-toggle');
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    cymGain = audioCtx.createGain();
+    cymGain.gain.setValueAtTime(0, audioCtx.currentTime);
+    cymGain.connect(audioCtx.destination);
+    cymOsc = audioCtx.createOscillator();
+    cymOsc.type = 'sine';
+    cymOsc.frequency.setValueAtTime(CYMATIC_HZ, audioCtx.currentTime);
+    cymOsc.connect(cymGain);
+    cymOsc.start();
+  }
+  audioOn = !audioOn;
+  const target = audioOn ? 0.03 : 0;
+  cymGain.gain.setTargetAtTime(target, audioCtx.currentTime, 0.5);
+  btn.textContent = audioOn ? '◈ CYMATIC 752 Hz' : '◈ CYMATIC OFF';
+  btn.classList.toggle('on', audioOn);
+  setBiohaptic(audioOn ? 'CYMATIC RESONANCE' : 'IDLE');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// MAIN LOOP
+// ════════════════════════════════════════════════════════════════════════
+
+function loop() {
+  drawCymatic();
+  spawnSparkle();
+  drawSparkles();
+  requestAnimationFrame(loop);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════════════════════
+
+renderRooms();
+drawQR();
+loop();
+
+// Initial sparkle burst — the portal awakens
+setTimeout(() => sparkleBurst(), 800);
+
+console.log('%cPORTAL2 · HOLOTOOTH · 752 Hz standing wave awake','color:#c9a84c;font-size:1rem');
+console.log('%c752 = Freya (741) + 11 (Master Number)','color:#67e8f9;font-size:0.8rem');
+console.log('%cMove your cursor → biohaptic aura shadow activates (offset [0,0,-1.2])','color:#4ce0c9;font-size:0.75rem');
+console.log('%cClick the QR airtag → 4D sparkle burst','color:#9a7ae8;font-size:0.75rem');
+</script>
+</body>
+</html>

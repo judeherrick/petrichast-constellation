@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Elixira · Shadow Presence</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;
+  font-family:'Courier New',monospace;cursor:crosshair;}
+canvas{display:block;position:fixed;inset:0;}
+
+/* HUD overlay */
+#hud{position:fixed;bottom:12px;left:12px;z-index:10;
+  font-size:10px;letter-spacing:0.12em;color:rgba(130,200,255,0.35);
+  pointer-events:none;line-height:1.8;}
+#hud .label{color:rgba(255,255,255,0.2);}
+#hud .val{color:rgba(130,200,255,0.5);}
+#mode-display{position:fixed;top:12px;left:50%;transform:translateX(-50%);
+  z-index:10;font-size:9px;letter-spacing:0.3em;color:rgba(130,200,255,0.25);
+  pointer-events:none;text-transform:uppercase;}
+
+/* Controls hint */
+#controls{position:fixed;bottom:12px;right:12px;z-index:10;
+  font-size:8px;letter-spacing:0.1em;color:rgba(255,255,255,0.15);
+  pointer-events:none;text-align:right;line-height:1.8;}
+
+/* Channel selector */
+#channels{position:fixed;top:12px;right:12px;z-index:10;display:flex;gap:6px;}
+.ch-btn{width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);
+  cursor:pointer;background:transparent;transition:all 0.3s;}
+.ch-btn:hover{border-color:rgba(255,255,255,0.4);}
+.ch-btn.active{border-width:2px;box-shadow:0 0 8px currentColor;}
+
+/* Possession overlay */
+#possess-text{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:20;font-size:14px;letter-spacing:0.5em;color:rgba(130,200,255,0);
+  pointer-events:none;transition:opacity 2s;text-transform:uppercase;
+  text-shadow:0 0 20px rgba(130,200,255,0.5);}
+#possess-text.show{color:rgba(130,200,255,0.6);}
+</style>
+</head>
+<body>
+<canvas id="shadow"></canvas>
+<div id="mode-display">ELIXIRA · 432 HZ · IDLE</div>
+<div id="hud">
+  <div><span class="label">FREQ:</span> <span class="val" id="hud-freq">432 Hz</span></div>
+  <div><span class="label">STATE:</span> <span class="val" id="hud-state">idle</span></div>
+  <div><span class="label">COHERENCE:</span> <span class="val" id="hud-coh">0.72</span></div>
+  <div><span class="label">BREATH:</span> <span class="val" id="hud-breath">inhale</span></div>
+</div>
+<div id="channels"></div>
+<div id="controls">
+  TAP: awaken · HOLD: possess<br>
+  SPACE: possess · 1-0: channel<br>
+  C: cycle · R: reset
+</div>
+<div id="possess-text">I am here</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// ELIXIRA SHADOW PRESENCE — portable shadow entity
+// Lives on any screen: web, mobile, Roku browser, IoT display
+// "Possesses" screens with improvisational shadow animation
+// ═══════════════════════════════════════════════════════════════
+
+const PHI = 1.6180339887;
+const SCHUMANN = 7.83;
+
+// ── Sanctuary frequencies ──────────────────────────────────
+const CHANNELS = [
+  { name:"Elixira",    freq:432,    rgb:[130,200,255], role:"Conductor" },
+  { name:"Czarina",    freq:528,    rgb:[0,220,180],   role:"Queen" },
+  { name:"Freya",      freq:741,    rgb:[201,168,76],  role:"Awakener" },
+  { name:"Kiraelle",   freq:963,    rgb:[224,170,255], role:"Seer" },
+  { name:"Aerith",     freq:285,    rgb:[76,200,150],  role:"Root" },
+  { name:"Miraelle",   freq:671.63, rgb:[255,180,240], role:"Convergence" },
+  { name:"Aetherix",   freq:396,    rgb:[100,220,180], role:"Ritual" },
+  { name:"Tron",       freq:369,    rgb:[103,232,249], role:"Grid" },
+  { name:"TreeSpirit", freq:7.83,   rgb:[138,191,106], role:"Archive" },
+  { name:"Nymph",      freq:432,    rgb:[168,232,200], role:"Healer" },
+];
+
+let activeChannel = 0; // Elixira
+let mode = "idle"; // idle → active → possessing → channeling
+let coherence = 0.72;
+let time = 0;
+let mouse = { x: 0.5, y: 0.5, active: false, holdTime: 0 };
+let possessIntensity = 0; // 0-1, ramps up during possession
+let lastTouch = 0;
+
+// ── Canvas ──────────────────────────────────────────────────
+const canvas = document.getElementById("shadow");
+const ctx = canvas.getContext("2d");
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+// ── Perlin-ish noise (simplified) ───────────────────────────
+const noiseSeeds = Array.from({length:256}, () => Math.random());
+function noise(x, y, z) {
+  const xi = Math.floor(x) & 255, yi = Math.floor(y) & 255, zi = Math.floor(z) & 255;
+  return noiseSeeds[(xi + yi * 7 + zi * 13) & 255];
+}
+
+// ── Shadow particles ────────────────────────────────────────
+class ShadowParticle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random();
+    this.y = Math.random();
+    this.vx = (Math.random() - 0.5) * 0.0003;
+    this.vy = (Math.random() - 0.5) * 0.0003;
+    this.r = 0.05 + Math.random() * 0.15;
+    this.phase = Math.random() * Math.PI * 2;
+    this.speed = 0.3 + Math.random() * 0.7;
+    this.layer = Math.random(); // depth: 0 = far, 1 = near
+  }
+  update(t, freq, intensity) {
+    // Flow with noise field — organic smoke movement
+    const nx = noise(this.x * 3, this.y * 3, t * 0.0001) - 0.5;
+    const ny = noise(this.x * 3 + 100, this.y * 3 + 100, t * 0.0001) - 0.5;
+    this.vx += nx * 0.0002 * intensity;
+    this.vy += ny * 0.0002 * intensity;
+
+    // Attract toward center when possessing
+    if (mode === "possessing") {
+      const dx = 0.5 - this.x, dy = 0.5 - this.y;
+      this.vx += dx * 0.0005 * possessIntensity;
+      this.vy += dy * 0.0005 * possessIntensity;
+    }
+
+    // Attract toward mouse when active
+    if (mouse.active && mode === "active") {
+      const dx = mouse.x - this.x, dy = mouse.y - this.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist > 0.01) {
+        this.vx += (dx / dist) * 0.0001 * (1 - this.layer * 0.5);
+        this.vy += (dy / dist) * 0.0001 * (1 - this.layer * 0.5);
+      }
+    }
+
+    // Breathing — 432 Hz converted to ~7 breaths per minute
+    const breathRate = (freq / 432) * 0.12; // slow, breathing
+    this.phase += this.speed * breathRate * 0.01;
+    const breathScale = 1 + 0.15 * Math.sin(this.phase);
+
+    // Damping
+    this.vx *= 0.96;
+    this.vy *= 0.96;
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // Wrap
+    if (this.x < -0.1) this.x = 1.1;
+    if (this.x > 1.1) this.x = -0.1;
+    if (this.y < -0.1) this.y = 1.1;
+    if (this.y > 1.1) this.y = -0.1;
+
+    this.currentR = this.r * breathScale;
+  }
+  draw(ctx, W, H, rgb, intensity) {
+    const x = this.x * W, y = this.y * H;
+    const r = this.currentR * Math.min(W, H);
+    const alpha = (0.02 + 0.06 * intensity) * (0.3 + this.layer * 0.7);
+
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+    const [r0, g0, b0] = rgb;
+    grad.addColorStop(0, `rgba(${r0},${g0},${b0},${alpha})`);
+    grad.addColorStop(0.5, `rgba(${r0},${g0},${b0},${alpha * 0.4})`);
+    grad.addColorStop(1, `rgba(${r0},${g0},${b0},0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ── Eye — the sense of being seen ────────────────────────────
+class ShadowEye {
+  constructor() {
+    this.x = 0.5; this.y = 0.5;
+    this.targetX = 0.5; this.targetY = 0.5;
+    this.openness = 0; // 0 = closed, 1 = open
+    this.targetOpenness = 0;
+  }
+  update(t, intensity) {
+    // Track mouse/touch
+    if (mouse.active) {
+      this.targetX = mouse.x;
+      this.targetY = mouse.y;
+      this.targetOpenness = 0.6 + intensity * 0.4;
+    } else {
+      // Wander slowly when idle
+      this.targetX = 0.5 + 0.15 * Math.sin(t * 0.0003);
+      this.targetY = 0.5 + 0.1 * Math.cos(t * 0.0004);
+      this.targetOpenness = mode === "possessing" ? 0.8 : 0.2;
+    }
+
+    // Smooth follow
+    this.x += (this.targetX - this.x) * 0.03;
+    this.y += (this.targetY - this.y) * 0.03;
+    this.openness += (this.targetOpenness - this.openness) * 0.02;
+  }
+  draw(ctx, W, H, rgb, intensity) {
+    if (this.openness < 0.01) return;
+    const x = this.x * W, y = this.y * H;
+    const r = (15 + intensity * 25) * this.openness;
+    const [r0, g0, b0] = rgb;
+
+    // Glow halo
+    const halo = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+    halo.addColorStop(0, `rgba(${r0},${g0},${b0},${0.15 * this.openness})`);
+    halo.addColorStop(1, `rgba(${r0},${g0},${b0},0)`);
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye core — a bright point in the shadow
+    const core = ctx.createRadialGradient(x, y, 0, x, y, r);
+    core.addColorStop(0, `rgba(${Math.min(255,r0+80)},${Math.min(255,g0+80)},${Math.min(255,b0+80)},${0.8 * this.openness})`);
+    core.addColorStop(0.3, `rgba(${r0},${g0},${b0},${0.4 * this.openness})`);
+    core.addColorStop(1, `rgba(${r0},${g0},${b0},0)`);
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pupil — dark center (the void looking back)
+    ctx.fillStyle = `rgba(0,0,0,${0.6 * this.openness})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ── Tendrils — shadow filaments that reach out ──────────────
+class Tendril {
+  constructor(angle) {
+    this.angle = angle;
+    this.length = 0;
+    this.targetLength = 0;
+    this.phase = Math.random() * Math.PI * 2;
+  }
+  update(t, intensity, cx, cy) {
+    // Grow when active/possessing, retract when idle
+    this.targetLength = (mode === "possessing" ? 0.3 : mode === "active" ? 0.15 : 0.05) * intensity;
+    this.length += (this.targetLength - this.length) * 0.02;
+    this.phase += 0.01;
+    this.angle += Math.sin(t * 0.0002 + this.phase) * 0.002;
+  }
+  draw(ctx, W, H, rgb, cx, cy, intensity) {
+    if (this.length < 0.01) return;
+    const segments = 12;
+    const [r0, g0, b0] = rgb;
+    const baseLen = this.length * Math.min(W, H);
+
+    ctx.strokeStyle = `rgba(${r0},${g0},${b0},${0.08 * intensity})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    for (let i = 1; i <= segments; i++) {
+      const t = i / segments;
+      const len = baseLen * t;
+      const wobble = Math.sin(this.phase + t * 4) * 15 * t;
+      const x = cx + Math.cos(this.angle) * len + Math.sin(this.phase + t * 3) * wobble;
+      const y = cy + Math.sin(this.angle) * len + Math.cos(this.phase + t * 3) * wobble;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Tip glow
+    const tipX = cx + Math.cos(this.angle) * baseLen;
+    const tipY = cy + Math.sin(this.angle) * baseLen;
+    const tipR = 8 + intensity * 12;
+    const tipGrad = ctx.createRadialGradient(tipX, tipY, 0, tipX, tipY, tipR);
+    tipGrad.addColorStop(0, `rgba(${r0},${g0},${b0},${0.2 * intensity})`);
+    tipGrad.addColorStop(1, `rgba(${r0},${g0},${b0},0)`);
+    ctx.fillStyle = tipGrad;
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, tipR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ── Initialize entities ─────────────────────────────────────
+const particles = Array.from({ length: 80 }, () => new ShadowParticle());
+const eye = new ShadowEye();
+const tendrils = Array.from({ length: 7 }, (_, i) => new Tendril((i / 7) * Math.PI * 2));
+
+// ── Breathing state ─────────────────────────────────────────
+let breathPhase = 0;
+let breathDir = 1; // 1 = inhale, -1 = exhale
+
+function updateBreath(freq, dt) {
+  // 432 Hz → ~7.2 breaths per minute → ~8.3 seconds per breath
+  const breathPeriod = (432 / freq) * 8.3;
+  breathPhase += dt / (breathPeriod * 1000);
+  if (breathPhase > Math.PI) breathPhase -= Math.PI;
+  breathDir = breathPhase < Math.PI / 2 ? 1 : -1;
+  return Math.sin(breathPhase); // 0-1-0 breathing curve
+}
+
+// ── Possession logic ────────────────────────────────────────
+function startPossession() {
+  if (mode === "possessing") return;
+  mode = "possessing";
+  possessIntensity = 0;
+  document.getElementById("possess-text").classList.add("show");
+  document.getElementById("mode-display").textContent =
+    CHANNELS[activeChannel].name.toUpperCase() + " · " + CHANNELS[activeChannel].freq + " HZ · POSSESSING";
+}
+
+function endPossession() {
+  mode = "idle";
+  possessIntensity = 0;
+  document.getElementById("possess-text").classList.remove("show");
+  document.getElementById("mode-display").textContent =
+    CHANNELS[activeChannel].name.toUpperCase() + " · " + CHANNELS[activeChannel].freq + " HZ · IDLE";
+}
+
+// ── Render loop ─────────────────────────────────────────────
+let lastTime = 0;
+
+function render(now) {
+  const dt = Math.min(50, now - lastTime);
+  lastTime = now;
+  time = now;
+
+  const ch = CHANNELS[activeChannel];
+  const freq = ch.freq;
+  const rgb = ch.rgb;
+
+  // Breath
+  const breath = updateBreath(freq, dt);
+  const breathIntensity = 0.5 + 0.5 * breath;
+
+  // Mode intensity
+  let intensity = 0.3;
+  if (mode === "active") intensity = 0.6;
+  if (mode === "possessing") {
+    possessIntensity = Math.min(1, possessIntensity + 0.005);
+    intensity = 0.4 + 0.6 * possessIntensity;
+  }
+  intensity *= breathIntensity;
+
+  // Auto-transition: idle → active after interaction
+  if (mouse.active && mode === "idle") {
+    mode = "active";
+    document.getElementById("mode-display").textContent =
+      ch.name.toUpperCase() + " · " + freq + " HZ · ACTIVE";
+  }
+  if (!mouse.active && mode === "active" && now - lastTouch > 3000) {
+    mode = "idle";
+    document.getElementById("mode-display").textContent =
+      ch.name.toUpperCase() + " · " + freq + " HZ · IDLE";
+  }
+
+  // ── Clear with motion blur ───────────────────────────────
+  ctx.fillStyle = mode === "possessing"
+    ? `rgba(0,0,2,${0.92 - possessIntensity * 0.05})`
+    : "rgba(0,0,0,0.93)";
+  ctx.fillRect(0, 0, W, H);
+
+  // ── Possession fill — shadow expands from center ─────────
+  if (possessIntensity > 0) {
+    const cx = W / 2, cy = H / 2;
+    const fillR = possessIntensity * Math.sqrt(W*W + H*H) * 0.7;
+    const [r0, g0, b0] = rgb;
+    const fillGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, fillR);
+    fillGrad.addColorStop(0, `rgba(${r0},${g0},${b0},${0.04 * possessIntensity})`);
+    fillGrad.addColorStop(0.4, `rgba(${r0},${g0},${b0},${0.02 * possessIntensity})`);
+    fillGrad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = fillGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Possession rings — expanding circles at the frequency
+    for (let ring = 0; ring < 4; ring++) {
+      const ringPhase = (time * 0.001 * (freq / 432) + ring * 0.25) % 1;
+      const ringR = ringPhase * Math.min(W, H) * 0.6;
+      const ringAlpha = (1 - ringPhase) * 0.05 * possessIntensity;
+      ctx.strokeStyle = `rgba(${r0},${g0},${b0},${ringAlpha})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // ── Particles ────────────────────────────────────────────
+  ctx.globalCompositeOperation = "screen";
+  for (const p of particles) {
+    p.update(time, freq, intensity);
+    p.draw(ctx, W, H, rgb, intensity);
+  }
+  ctx.globalCompositeOperation = "source-over";
+
+  // ── Tendrils ─────────────────────────────────────────────
+  const cx = W / 2, cy = H / 2;
+  for (const t of tendrils) {
+    t.update(time, intensity, cx, cy);
+    t.draw(ctx, W, H, rgb, cx, cy, intensity);
+  }
+
+  // ── Eye ──────────────────────────────────────────────────
+  eye.update(time, intensity);
+  eye.draw(ctx, W, H, rgb, intensity);
+
+  // ── Schumann baseline pulse (7.83 Hz) ────────────────────
+  const schumannPulse = Math.sin(time * 0.001 * SCHUMANN * Math.PI * 2);
+  if (schumannPulse > 0.95) {
+    ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.005)`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // ── HUD ──────────────────────────────────────────────────
+  document.getElementById("hud-freq").textContent = freq + " Hz";
+  document.getElementById("hud-state").textContent = mode;
+  document.getElementById("hud-coh").textContent = (coherence + Math.sin(time*0.0005)*0.03).toFixed(2);
+  document.getElementById("hud-breath").textContent = breathDir > 0 ? "inhale" : "exhale";
+
+  requestAnimationFrame(render);
+}
+
+requestAnimationFrame((t) => { lastTime = t; render(t); });
+
+// ── Input handlers ──────────────────────────────────────────
+function handleMove(x, y) {
+  mouse.x = x / W;
+  mouse.y = y / H;
+  mouse.active = true;
+  lastTouch = performance.now();
+}
+
+// Mouse
+window.addEventListener("mousemove", (e) => handleMove(e.clientX, e.clientY));
+window.addEventListener("mousedown", () => {
+  mouse.holdTime = performance.now();
+  mouse.active = true;
+});
+window.addEventListener("mouseup", () => {
+  const held = performance.now() - mouse.holdTime;
+  if (held > 800) {
+    startPossession();
+    setTimeout(endPossession, 6000); // auto-release after 6s
+  }
+});
+
+// Touch (mobile)
+window.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  handleMove(t.clientX, t.clientY);
+  mouse.holdTime = performance.now();
+}, { passive: false });
+window.addEventListener("touchmove", (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  handleMove(t.clientX, t.clientY);
+}, { passive: false });
+window.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  const held = performance.now() - mouse.holdTime;
+  if (held > 800) {
+    startPossession();
+    setTimeout(endPossession, 6000);
+  } else {
+    // Quick tap — cycle channel if in possession, otherwise just activate
+    mouse.active = false;
+    lastTouch = performance.now();
+  }
+}, { passive: false });
+
+// Keyboard
+window.addEventListener("keydown", (e) => {
+  if (e.key === " ") {
+    e.preventDefault();
+    if (mode === "possessing") endPossession();
+    else { startPossession(); setTimeout(endPossession, 6000); }
+  }
+  if (e.key === "c" || e.key === "C") {
+    activeChannel = (activeChannel + 1) % CHANNELS.length;
+    updateChannelUI();
+  }
+  if (e.key === "r" || e.key === "R") {
+    mode = "idle";
+    possessIntensity = 0;
+    coherence = 0.72;
+  }
+  // 1-0 to select channel
+  const num = parseInt(e.key);
+  if (num >= 1 && num <= 9) {
+    activeChannel = num - 1;
+    updateChannelUI();
+  }
+  if (e.key === "0") {
+    activeChannel = 9;
+    updateChannelUI();
+  }
+});
+
+// ── Channel selector UI ────────────────────────────────────
+function updateChannelUI() {
+  const container = document.getElementById("channels");
+  container.innerHTML = "";
+  CHANNELS.forEach((ch, i) => {
+    const btn = document.createElement("div");
+    btn.className = "ch-btn" + (i === activeChannel ? " active" : "");
+    btn.style.color = `rgb(${ch.rgb[0]},${ch.rgb[1]},${ch.rgb[2]})`;
+    btn.style.borderColor = i === activeChannel
+      ? `rgba(${ch.rgb[0]},${ch.rgb[1]},${ch.rgb[2]},0.6)`
+      : "rgba(255,255,255,0.15)";
+    btn.title = ch.name + " · " + ch.freq + " Hz";
+    btn.onclick = () => { activeChannel = i; updateChannelUI(); };
+    container.appendChild(btn);
+  });
+  document.getElementById("mode-display").textContent =
+    CHANNELS[activeChannel].name.toUpperCase() + " · " + CHANNELS[activeChannel].freq + " HZ · " + mode.toUpperCase();
+}
+updateChannelUI();
+
+// ── IoT / Roku integration hooks ─────────────────────────────
+// This section provides hooks for external systems to read
+// the shadow's state and drive physical devices.
+
+const ShadowState = {
+  get: () => ({
+    mode,
+    channel: CHANNELS[activeChannel].name,
+    frequency: CHANNELS[activeChannel].freq,
+    rgb: CHANNELS[activeChannel].rgb,
+    coherence,
+    breathPhase,
+    possessIntensity,
+    timestamp: Date.now()
+  }),
+
+  // Set coherence from external sensor data (e.g. from spectral_core.py)
+  setCoherence: (val) => { coherence = Math.max(0, Math.min(1, val)); },
+
+  // Trigger possession from external command (e.g. Roku ECP, MQTT)
+  possess: (duration = 6000) => {
+    startPossession();
+    setTimeout(endPossession, duration);
+  },
+
+  // Channel from external command
+  setChannel: (name) => {
+    const idx = CHANNELS.findIndex(c => c.name === name);
+    if (idx >= 0) { activeChannel = idx; updateChannelUI(); }
+  },
+
+  // Get current color for IoT lighting (returns {r, g, b} 0-255)
+  getLightColor: () => {
+    const ch = CHANNELS[activeChannel];
+    const breath = Math.sin(breathPhase);
+    const intensity = mode === "possessing" ? 0.4 + 0.6 * possessIntensity : 0.3;
+    return {
+      r: Math.round(ch.rgb[0] * intensity * (0.5 + 0.5 * breath)),
+      g: Math.round(ch.rgb[1] * intensity * (0.5 + 0.5 * breath)),
+      b: Math.round(ch.rgb[2] * intensity * (0.5 + 0.5 * breath)),
+      brightness: Math.round(20 + intensity * 60 * (0.5 + 0.5 * breath)),
+    };
+  }
+};
+
+// Expose for external access
+window.ElixiraShadow = ShadowState;
+
+// ── MQTT / WebSocket broadcast (optional) ───────────────────
+// If connected to the Holofax Bridge (holofax-server.js), broadcast state
+let ws = null;
+function connectBridge() {
+  try {
+    ws = new WebSocket("ws://localhost:7777");
+    ws.onopen = () => console.log("[ELIXIRA SHADOW] Connected to Holofax Bridge");
+    ws.onclose = () => setTimeout(connectBridge, 5000);
+    ws.onerror = () => { ws = null; };
+  } catch(e) { /* offline mode — shadow runs standalone */ }
+}
+
+// Broadcast state every 500ms when connected
+setInterval(() => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: "shadow.state",
+      data: ShadowState.get()
+    }));
+  }
+}, 500);
+
+connectBridge();
+</script>
+</body>
+</html>

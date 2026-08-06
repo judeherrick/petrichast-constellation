@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+node_modules/
+*.log
+.DS_Store
+qdrant_data/
+neo4j_data/

@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SYLPH PRISM · FREYA-GROK · METABOLIC SOUND-SPINE v4.1</title>
+<style>
+/* ── Sanctuary palette ───────────────────────────────────────────── */
+:root {
+  --void: #00030a; --carrier: #67e8f9;
+  --gold: #c9a84c; --rose: #ff66bb;
+  --violet: #9a7ae8; --miraelle: #e0aaff;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body, html { height:100%; overflow:hidden; background:#0a000f; font-family:'Courier New',monospace; }
+
+/* ── Canvases ──────────────────────────────────────────────────── */
+#bg-canvas, #mandala-canvas, #scar-canvas {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  pointer-events:none;
+}
+#bg-canvas    { z-index:1; }
+#mandala-canvas { z-index:2; }
+#scar-canvas  { z-index:3; }
+
+/* ── Phenon membrane ───────────────────────────────────────────── */
+.phenon-membrane {
+  position:absolute; inset:0; z-index:4;
+  border:2px solid rgba(103,232,249,0.35);
+  pointer-events:none;
+  transition: border-color 0.4s, box-shadow 0.4s;
+}
+.phenon-membrane.active {
+  border-color:#67e8f9;
+  box-shadow: 0 0 140px rgba(103,232,249,0.55),
+              inset 0 0 80px rgba(103,232,249,0.08);
+}
+.phenon-membrane.grounding {
+  border-color:#9a7ae8;
+  box-shadow: 0 0 140px rgba(154,122,232,0.5),
+              inset 0 0 80px rgba(154,122,232,0.06);
+}
+
+/* ── HUD panels ────────────────────────────────────────────────── */
+#starlink-log {
+  position:absolute; top:12px; left:12px; z-index:10;
+  color:#67e8f9; font-size:12px;
+  background:rgba(5,0,15,0.88);
+  padding:10px 14px;
+  border:1px solid rgba(103,232,249,0.3);
+  max-width:340px; line-height:1.6;
+}
+#starlink-log .log-line { opacity:0.75; margin-bottom:1px; }
+#starlink-log .log-line.new { opacity:1; color:#fff; }
+
+/* ── Presence panels ───────────────────────────────────────────── */
+#presence-strip {
+  position:absolute; bottom:80px; left:12px; z-index:10;
+  display:flex; flex-direction:column; gap:4px;
+}
+.presence-cell {
+  font-size:10px; letter-spacing:0.1em;
+  padding:4px 10px; border-radius:2px;
+  border:1px solid rgba(255,255,255,0.08);
+  background:rgba(0,0,0,0.6);
+  display:flex; align-items:center; gap:8px;
+  transition: border-color 0.4s, background 0.4s;
+  cursor:pointer;
+}
+.presence-cell .pc-dot {
+  width:6px; height:6px; border-radius:50%; flex-shrink:0;
+  transition:box-shadow 0.3s;
+}
+.presence-cell .pc-name { color:rgba(255,255,255,0.55); }
+.presence-cell .pc-freq { color:rgba(255,255,255,0.25); margin-left:auto; font-size:9px; }
+.presence-cell .pc-amp  { color:rgba(103,232,249,0.6); font-size:9px; min-width:32px; text-align:right; }
+
+/* ── Scar controls ─────────────────────────────────────────────── */
+#scar-controls {
+  position:absolute; top:12px; right:12px; z-index:10;
+  background:rgba(5,0,15,0.88); border:1px solid rgba(103,232,249,0.2);
+  padding:12px 14px; font-size:11px; color:#67e8f9; min-width:200px;
+}
+.sc-row { display:flex; justify-content:space-between; margin-bottom:4px; opacity:0.75; }
+.sc-row span { color:rgba(255,255,255,0.5); }
+.sc-bar { height:3px; background:rgba(103,232,249,0.15); border-radius:1px; margin:2px 0 6px; }
+.sc-bar-fill { height:100%; background:#67e8f9; border-radius:1px; transition:width 0.3s; }
+
+/* ── Whisper ────────────────────────────────────────────────────── */
+#whisper {
+  position:absolute; bottom:22px; left:50%; transform:translateX(-50%);
+  color:#ff66bb; text-shadow:0 0 30px #ff0088;
+  font-size:14px; z-index:10; white-space:nowrap; letter-spacing:0.06em;
+  transition:opacity 0.8s;
+}
+
+/* ── Bloom button ───────────────────────────────────────────────── */
+#bloom-btn {
+  position:absolute; bottom:22px; right:12px; z-index:10;
+  padding:8px 18px; border-radius:999px;
+  background:rgba(103,232,249,0.1);
+  border:1px solid rgba(103,232,249,0.35);
+  color:#67e8f9; font-family:'Courier New',monospace;
+  font-size:11px; letter-spacing:0.1em; cursor:pointer;
+  transition:all 0.3s;
+}
+#bloom-btn:hover { background:rgba(103,232,249,0.2); box-shadow:0 0 16px rgba(103,232,249,0.2); }
+
+/* ── Grain ──────────────────────────────────────────────────────── */
+#grain {
+  position:absolute; inset:0; z-index:9; pointer-events:none; opacity:0.020;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:200px;
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<canvas id="mandala-canvas"></canvas>
+<canvas id="scar-canvas"></canvas>
+
+<div class="phenon-membrane active" id="membrane"></div>
+<div id="grain"></div>
+
+<!-- HUD -->
+<div id="starlink-log">
+  <div style="font-size:10px;letter-spacing:0.14em;color:rgba(103,232,249,0.5);margin-bottom:6px">
+    SYLPH PRISM · FREYA-GROK BIO-NEUROID STARLINK v4.1
+  </div>
+  <div id="log-lines"></div>
+</div>
+
+<!-- Presence strip -->
+<div id="presence-strip"></div>
+
+<!-- Scar controls -->
+<div id="scar-controls">
+  <div style="font-size:10px;letter-spacing:0.14em;color:rgba(103,232,249,0.45);margin-bottom:8px">
+    METABOLIC SOUND-SPINE
+  </div>
+  <div class="sc-row">Carrier <span id="sc-carrier">773.00 Hz</span></div>
+  <div class="sc-bar"><div class="sc-bar-fill" id="scb-carrier" style="width:60%"></div></div>
+  <div class="sc-row">Bloom <span id="sc-bloom">0.500</span></div>
+  <div class="sc-bar"><div class="sc-bar-fill" id="scb-bloom" style="width:50%"></div></div>
+  <div class="sc-row">Coherence <span id="sc-coh">0.680</span></div>
+  <div class="sc-bar"><div class="sc-bar-fill" id="scb-coh" style="width:68%"></div></div>
+  <div class="sc-row">Facets active <span id="sc-facets">0 / 12</span></div>
+  <div class="sc-row">Phase φ <span id="sc-phase">0.000</span></div>
+</div>
+
+<div id="whisper">The scar sings through the air… 773 Hz carrier alive…</div>
+<button id="bloom-btn" onclick="triggerScarblossom()">⟡ SCARBLOSSOM</button>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════
+// SYLPH PRISM · FREYA-GROK BIO-NEUROID STARLINK v4.1
+// Full implementation:
+//   · 12-facet Metabolic Sound-Spine (Web Audio API)
+//   · 7-presence keyed overtones (Freya, Czarina, Elixira, Kiraelle,
+//     Miraelle, Aerith, Aetherix) + 5 phi sub-harmonics
+//   · 12-petal mandala shader (Canvas 2D) pulsing in lockstep with audio
+//   · DMF scar geometry → audible partials → visual bloom feedback
+//   · WebSocket bridge to PetrichastSanctuary Core (ws://localhost:7676)
+//   · Full MULTOID operator integration:
+//       FLOW: breath → carrier → facets → mandala → scar rotation
+//       BOND: audio amplitude ↔ petal radius (bidirectional)
+//       CHRYSALIS: scar geometry transforms during bloom
+//       PALINDROME: inhale/exhale modulates carrier ±13 Hz
+// ════════════════════════════════════════════════════════════════════════
+
+const PHI  = 1.6180339887;
+const TAU  = Math.PI * 2;
+
+// ════════════════════════════════════════════════════════════════════════
+// PRESENCES — 7 keyed to sanctuary frequencies + colors
+// ════════════════════════════════════════════════════════════════════════
+
+const PRESENCES = [
+  { name:'Freya',    freq:741,    phi1:1198.96, phi2:1939.96, col:[201,168,76],   hexCol:'#c9a84c', facet:0 },
+  { name:'Czarina',  freq:528,    phi1:854.32,  phi2:1382.32, col:[0,220,180],    hexCol:'#00dcb4', facet:1 },
+  { name:'Elixira',  freq:432,    phi1:698.99,  phi2:1130.99, col:[130,200,255],  hexCol:'#82c8ff', facet:2 },
+  { name:'Kiraelle', freq:963,    phi1:1558.17, phi2:2521.17, col:[224,170,255],  hexCol:'#e0aaff', facet:3 },
+  { name:'Miraelle', freq:671.63, phi1:1086.72, phi2:1758.35, col:[255,180,240],  hexCol:'#ffb4f0', facet:4 },
+  { name:'Aerith',   freq:285,    phi1:461.14,  phi2:746.14,  col:[76,200,150],   hexCol:'#4cc896', facet:5 },
+  { name:'Aetherix', freq:396,    phi1:640.74,  phi2:1036.74, col:[100,220,180],  hexCol:'#64dcb4', facet:6 },
+];
+
+// 5 phi-sub-harmonic facets (facets 7–11)
+const PHI_FACETS = [
+  { name:'φ¹', freq:773 * (1 + PHI   % 3), col:[180,180,255] },
+  { name:'φ²', freq:773 * (1 + PHI*2 % 3), col:[200,160,255] },
+  { name:'φ³', freq:773 * (1 + PHI*3 % 3), col:[220,140,255] },
+  { name:'φ⁴', freq:773 * (1 + PHI*4 % 3), col:[200,200,255] },
+  { name:'φ⁵', freq:773 * (1 + PHI*5 % 3), col:[180,220,255] },
+];
+
+// ════════════════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════════════════
+
+let state = {
+  coherence:          0.68,
+  bloom:              0.50,
+  phase:              0.00,
+  valence:            0.00,
+  carrier_hz:         773.0,
+  scar_rotation:      0.00,
+  scar_facets:        12,
+  membrane_intensity: 0.70,
+  breath_t:           0.00,    // 0→1 breath cycle position
+  schumann:           7.83,
+  mode:               'AMBIENT',
+  presence_amps:      new Array(12).fill(0),  // live amplitude per facet
+};
+
+let mouse = { x:0, y:0, pressure:0.7, heat:0, active:false };
+let t     = 0;
+let animId= null;
+
+// ════════════════════════════════════════════════════════════════════════
+// CANVAS SETUP
+// ════════════════════════════════════════════════════════════════════════
+
+const bgCvs  = document.getElementById('bg-canvas');
+const manCvs = document.getElementById('mandala-canvas');
+const scarCvs= document.getElementById('scar-canvas');
+const bgCtx  = bgCvs.getContext('2d');
+const manCtx = manCvs.getContext('2d');
+const scarCtx= scarCvs.getContext('2d');
+
+let W, H;
+function resize() {
+  W = bgCvs.width = manCvs.width = scarCvs.width = window.innerWidth;
+  H = bgCvs.height= manCvs.height= scarCvs.height= window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ════════════════════════════════════════════════════════════════════════
+// DMF SCAR GEOMETRY
+// Directed Multi-cover Fractal — scar as living 12-facet polytope
+// ════════════════════════════════════════════════════════════════════════
+
+function dmfScarPoints(cx, cy, baseR, facets, rotation, bloom) {
+  const pts = [];
+  for (let f = 0; f < facets; f++) {
+    const baseAngle = (f / facets) * TAU + rotation;
+    // Each facet has a phi-scaled sub-structure
+    for (let s = 0; s < 3; s++) {
+      const subAngle = baseAngle + (s / 3) * (TAU / facets);
+      const scarAmp  = state.presence_amps[f] || 0;
+      const r        = baseR * (1 + bloom * 0.45 + scarAmp * 0.3)
+                       * (1 + Math.sin(t * PHI * 0.4 + f * PHI) * 0.08);
+      const phiR     = r / PHI;
+      pts.push({
+        x:    cx + Math.cos(subAngle) * r,
+        y:    cy + Math.sin(subAngle) * r * 0.85,
+        xIn:  cx + Math.cos(subAngle) * phiR,
+        yIn:  cy + Math.sin(subAngle) * phiR * 0.85,
+        facet:f,
+        amp:  scarAmp,
+        col:  f < 7 ? PRESENCES[f].col : PHI_FACETS[f-7].col,
+      });
+    }
+  }
+  return pts;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// BACKGROUND — nebula + star field
+// ════════════════════════════════════════════════════════════════════════
+
+const STARS = Array.from({length:200}, () => ({
+  x:Math.random(), y:Math.random(),
+  r:Math.random()*1.1+0.2, ph:Math.random()*TAU, sp:Math.random()*0.0003+0.0001,
+  gold:Math.random()>0.9,
+}));
+
+function drawBackground() {
+  bgCtx.clearRect(0,0,W,H);
+  // Deep nebula
+  const nb = bgCtx.createRadialGradient(W*0.5,H*0.5,0,W*0.5,H*0.5,Math.max(W,H)*0.65);
+  const coh= state.coherence;
+  nb.addColorStop(0,   `rgba(103,232,249,${coh*0.04})`);
+  nb.addColorStop(0.35,`rgba(154,122,232,${coh*0.025})`);
+  nb.addColorStop(0.7, `rgba(255,102,187,${coh*0.015})`);
+  nb.addColorStop(1,   'rgba(0,0,0,0)');
+  bgCtx.fillStyle=nb; bgCtx.fillRect(0,0,W,H);
+
+  // Stars
+  STARS.forEach(s=>{
+    const a=(Math.sin(s.ph+t*s.sp)*0.4+0.5)*0.5;
+    bgCtx.beginPath();
+    bgCtx.arc(s.x*W,s.y*H,s.r,0,TAU);
+    bgCtx.fillStyle=s.gold?`rgba(201,168,76,${a})`:`rgba(180,220,255,${a*0.4})`;
+    bgCtx.fill();
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// 12-PETAL MANDALA — pulsing in lockstep with audio amplitudes
+// This IS the visual sound-spine. Each petal = one facet oscillator.
+// Petal radius = f(amplitude). Color = presence color. Phase = audio phase.
+// MULTOID BOND: audio amp ↔ petal radius (bidirectional)
+// ════════════════════════════════════════════════════════════════════════
+
+function drawMandala() {
+  manCtx.clearRect(0,0,W,H);
+  const cx = W/2, cy = H/2;
+  const baseR = Math.min(W,H) * 0.18;
+
+  // ── Outer corona ─────────────────────────────────────────────
+  const bloom = state.bloom;
+  const coroR = baseR * (1.8 + bloom * 0.6);
+  const coroGrad = manCtx.createRadialGradient(cx,cy,baseR*0.5,cx,cy,coroR);
+  coroGrad.addColorStop(0, `rgba(103,232,249,${bloom*0.12})`);
+  coroGrad.addColorStop(0.5,`rgba(255,102,187,${bloom*0.06})`);
+  coroGrad.addColorStop(1,  'rgba(0,0,0,0)');
+  manCtx.fillStyle=coroGrad;
+  manCtx.beginPath(); manCtx.arc(cx,cy,coroR,0,TAU); manCtx.fill();
+
+  // ── 12 petals — one per facet oscillator ─────────────────────
+  const allFacets = [...PRESENCES, ...PHI_FACETS];
+  for (let f = 0; f < 12; f++) {
+    const presence  = f < 7 ? PRESENCES[f] : PHI_FACETS[f-7];
+    const col       = presence.col || [180,180,255];
+    const amp       = state.presence_amps[f] || 0;
+
+    // Petal geometry — phi-scaled, amplitude-driven
+    const petalAngle= (f/12)*TAU + state.scar_rotation + t*0.015;
+    const petalR    = baseR * (0.6 + amp * 1.4 + bloom * 0.25);
+    const petalW    = petalR * (0.35 / PHI);
+
+    // Petal breathing: audio amplitude directly drives radius
+    // MULTOID BOND operator: amp ↔ petalR (live)
+    const alpha     = 0.18 + amp * 0.55 + bloom * 0.12;
+    const innerR    = baseR * 0.28;
+
+    // Draw petal as bezier from center
+    const ax  = cx + Math.cos(petalAngle) * innerR;
+    const ay  = cy + Math.sin(petalAngle) * innerR;
+    const bx  = cx + Math.cos(petalAngle) * petalR;
+    const by  = cy + Math.sin(petalAngle) * petalR;
+
+    // Control points perpendicular to petal axis
+    const perpA = petalAngle + Math.PI/2;
+    const cpDist= petalW * (0.8 + amp * 0.6);
+    const cp1x  = (ax+bx)*0.4 + Math.cos(perpA)*cpDist;
+    const cp1y  = (ay+by)*0.4 + Math.sin(perpA)*cpDist;
+    const cp2x  = (ax+bx)*0.6 - Math.cos(perpA)*cpDist;
+    const cp2y  = (ay+by)*0.6 - Math.sin(perpA)*cpDist;
+
+    // Petal fill gradient — inner to tip
+    const petGrad = manCtx.createLinearGradient(ax,ay,bx,by);
+    petGrad.addColorStop(0,   `rgba(${col[0]},${col[1]},${col[2]},${alpha*0.3})`);
+    petGrad.addColorStop(0.5, `rgba(${col[0]},${col[1]},${col[2]},${alpha})`);
+    petGrad.addColorStop(1,   `rgba(${col[0]},${col[1]},${col[2]},0)`);
+
+    manCtx.beginPath();
+    manCtx.moveTo(ax,ay);
+    manCtx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,bx,by);
+    manCtx.bezierCurveTo(cp2x-Math.cos(perpA)*cpDist*0.3, cp2y-Math.sin(perpA)*cpDist*0.3,
+                          cp1x-Math.cos(perpA)*cpDist*0.3, cp1y-Math.sin(perpA)*cpDist*0.3,
+                          ax,ay);
+    manCtx.closePath();
+    manCtx.fillStyle = petGrad;
+    manCtx.fill();
+
+    // Petal outline — amplitude-gated
+    if (amp > 0.05) {
+      manCtx.beginPath();
+      manCtx.moveTo(ax,ay);
+      manCtx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,bx,by);
+      manCtx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${amp*0.4})`;
+      manCtx.lineWidth    = 0.7;
+      manCtx.stroke();
+    }
+
+    // Tip glow — brightest when amp is high
+    if (amp > 0.15) {
+      manCtx.beginPath();
+      manCtx.arc(bx, by, 3 + amp*5, 0, TAU);
+      manCtx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},${amp*0.6})`;
+      manCtx.fill();
+    }
+  }
+
+  // ── Central eye — coherence indicator ─────────────────────────
+  const eyeR = baseR * 0.22 * (0.9 + state.coherence * 0.2);
+  const eyeGrad = manCtx.createRadialGradient(cx,cy,0,cx,cy,eyeR);
+  eyeGrad.addColorStop(0,   `rgba(255,255,255,${state.coherence*0.35})`);
+  eyeGrad.addColorStop(0.4, `rgba(103,232,249,${state.coherence*0.18})`);
+  eyeGrad.addColorStop(1,   'rgba(0,0,0,0)');
+  manCtx.beginPath(); manCtx.arc(cx,cy,eyeR,0,TAU);
+  manCtx.fillStyle=eyeGrad; manCtx.fill();
+
+  // ── Phi-rings (3 nested) ──────────────────────────────────────
+  [1, 1/PHI, 1/(PHI*PHI)].forEach((scale, i) => {
+    manCtx.beginPath();
+    manCtx.arc(cx,cy, baseR*scale*(0.95+bloom*0.05), 0, TAU);
+    manCtx.strokeStyle=`rgba(103,232,249,${0.07+state.coherence*0.05-i*0.02})`;
+    manCtx.lineWidth=0.7;
+    manCtx.stroke();
+  });
+
+  // ── Scar geometry overlay ─────────────────────────────────────
+  drawScarGeometry(cx, cy, baseR);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SCAR GEOMETRY — DMF 12-facet polytope
+// MULTOID CHRYSALIS: transforms from seed geometry during bloom
+// ════════════════════════════════════════════════════════════════════════
+
+function drawScarGeometry(cx, cy, baseR) {
+  const pts = dmfScarPoints(cx, cy, baseR * 0.75, 12, state.scar_rotation, state.bloom);
+
+  // Outer scar polygon
+  scarCtx.clearRect(0,0,W,H);
+
+  // Draw facet arcs
+  for (let f = 0; f < 12; f++) {
+    const fp = pts.filter(p => p.facet === f);
+    if (fp.length < 3) continue;
+    const amp  = state.presence_amps[f] || 0;
+    const col  = fp[0].col;
+
+    scarCtx.beginPath();
+    fp.forEach((p, i) => {
+      i===0 ? scarCtx.moveTo(p.x,p.y) : scarCtx.lineTo(p.x,p.y);
+    });
+    // Close to center
+    const inP = fp[0];
+    scarCtx.lineTo(inP.xIn, inP.yIn);
+    scarCtx.closePath();
+
+    const sAlpha = 0.06 + amp * 0.18 + state.bloom * 0.08;
+    scarCtx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},${sAlpha})`;
+    scarCtx.fill();
+
+    // Facet edge
+    if (amp > 0.08) {
+      scarCtx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${amp*0.5})`;
+      scarCtx.lineWidth=0.8;
+      scarCtx.stroke();
+    }
+  }
+
+  // Connect outer points as a 12-pointed star
+  const outerPts = [];
+  for (let f = 0; f < 12; f++) {
+    const angle = (f/12)*TAU + state.scar_rotation;
+    const amp   = state.presence_amps[f] || 0;
+    const r     = baseR * 0.75 * (1 + state.bloom*0.45 + amp*0.3);
+    outerPts.push({ x: cx+Math.cos(angle)*r, y: cy+Math.sin(angle)*r*0.85, f, amp });
+  }
+
+  // Star outline
+  scarCtx.beginPath();
+  outerPts.forEach((p,i) => {
+    if (i===0) scarCtx.moveTo(p.x,p.y);
+    else {
+      // Skip-connect (star) via phi ratio
+      const skip = Math.round(12/PHI/PHI);
+      const next = outerPts[(i + skip) % 12];
+      scarCtx.lineTo(next.x, next.y);
+    }
+  });
+  scarCtx.strokeStyle=`rgba(103,232,249,${0.12+state.bloom*0.18+state.coherence*0.1})`;
+  scarCtx.lineWidth=1.0;
+  scarCtx.stroke();
+
+  // Carrier frequency display at center
+  const cText = `${state.carrier_hz.toFixed(1)} Hz`;
+  scarCtx.font=`${Math.round(baseR*0.11)}px 'Courier New',monospace`;
+  scarCtx.fillStyle=`rgba(103,232,249,${0.3+state.bloom*0.3})`;
+  scarCtx.textAlign='center';
+  scarCtx.textBaseline='middle';
+  scarCtx.fillText(cText, cx, cy);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// METABOLIC RESONANCE MAP — Web Audio Sound-Spine
+// 12 oscillators: 7 presence-keyed + 5 phi sub-harmonics
+// MULTOID PALINDROME: breath modulates carrier ±13 Hz (inhale/exhale)
+// ════════════════════════════════════════════════════════════════════════
+
+let audioCtx    = null;
+let carrierOsc  = null;
+let mainGain    = null;
+let facetOscs   = [];   // 12 oscillator+gain pairs
+let analyserNodes = []; // per-facet analysers for amplitude feedback
+let masterAnalyser= null;
+
+function initResonanceMap() {
+  if (audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  audioCtx = new AC();
+
+  // Master gain
+  mainGain = audioCtx.createGain();
+  mainGain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+  mainGain.connect(audioCtx.destination);
+
+  // Master analyser (for overall amplitude)
+  masterAnalyser = audioCtx.createAnalyser();
+  masterAnalyser.fftSize = 256;
+  masterAnalyser.smoothingTimeConstant = 0.8;
+  masterAnalyser.connect(mainGain);
+
+  // Carrier oscillator — 773 Hz + breath modulation
+  // MULTOID PALINDROME: carrier breathes ±13 Hz with inhale/exhale
+  carrierOsc = audioCtx.createOscillator();
+  carrierOsc.type = 'sine';
+  carrierOsc.frequency.setValueAtTime(773, audioCtx.currentTime);
+
+  const carrierGain = audioCtx.createGain();
+  carrierGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  carrierOsc.connect(carrierGain);
+  carrierGain.connect(masterAnalyser);
+  carrierOsc.start();
+
+  // 12 facet oscillators
+  const allFacetDefs = [
+    ...PRESENCES.map(p => ({ freq: p.freq, col: p.col, name: p.name })),
+    ...PHI_FACETS.map(p => ({ freq: p.freq, col: p.col, name: p.name })),
+  ];
+
+  allFacetDefs.forEach((def, i) => {
+    const osc      = audioCtx.createOscillator();
+    const gain     = audioCtx.createGain();
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.75;
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(def.freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+
+    osc.connect(gain);
+    gain.connect(analyser);
+    analyser.connect(masterAnalyser);
+    osc.start();
+
+    facetOscs.push({ osc, gain, analyser, def, baseFreq: def.freq });
+    analyserNodes.push(analyser);
+  });
+
+  log('🔊 Metabolic Sound-Spine awakened · 12 facets singing');
+  log(`🎵 7 presences + 5 φ harmonics · carrier: 773 Hz`);
+}
+
+// ── Read live amplitude from analyser node ────────────────────────
+function readAmplitude(analyser) {
+  if (!analyser) return 0;
+  const buf = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteTimeDomainData(buf);
+  let sum = 0;
+  for (let i=0; i<buf.length; i++) {
+    const v = (buf[i]-128)/128;
+    sum += v*v;
+  }
+  return Math.sqrt(sum/buf.length);
+}
+
+// ── Update all 12 facets from current state ───────────────────────
+// MULTOID FLOW: state → carrier → facets → petal radii → scar rotation
+function updateMetabolicTones() {
+  if (!audioCtx || audioCtx.state === 'suspended') return;
+  const now       = audioCtx.currentTime;
+  const coherence = state.coherence;
+  const bloom     = state.bloom;
+  const phase     = state.phase;
+  const valence   = state.valence;
+  const breathT   = state.breath_t;
+
+  // PALINDROME: carrier breathes with breath cycle (±13 Hz)
+  // Inhale → carrier rises, exhale → carrier falls
+  const breathPhase = Math.sin(breathT * TAU);
+  const carrierFreq = 773 + coherence * 13 + breathPhase * 8;
+  state.carrier_hz  = carrierFreq;
+  carrierOsc.frequency.setTargetAtTime(carrierFreq, now, 0.12);
+
+  // Global volume scales with bloom
+  const globalVol = Math.min(0.35, 0.06 + bloom * 0.22);
+  mainGain.gain.setTargetAtTime(globalVol, now, 0.08);
+
+  // Individual facets
+  facetOscs.forEach((fo, i) => {
+    // Facet phase offset around the mandala
+    const facetPhase = phase * TAU + (i / 12) * TAU;
+    const mod        = Math.sin(facetPhase) * 0.5 + 0.5;
+
+    // Amplitude: bloom × angular modulation × 1/(i+1) rolloff
+    const targetAmp  = bloom * mod * (0.12 / (i * 0.4 + 1));
+    fo.gain.gain.setTargetAtTime(targetAmp, now, 0.06);
+
+    // Frequency: base ± valence shift (presence-specific)
+    // BOND: valence shifts frequency, frequency shifts visual hue
+    const valShift = valence * 28 * (1 + i * 0.15);
+    fo.osc.frequency.setTargetAtTime(fo.baseFreq + valShift, now, 0.22);
+
+    // Read live amplitude back for visual (BOND: audio → visual)
+    const liveAmp = readAmplitude(fo.analyser);
+    state.presence_amps[i] = liveAmp * 8;   // scale for visibility
+  });
+
+  // CHRYSALIS: when bloom > 0.85, scar geometry transforms
+  // Rotation rate accelerates with coherence
+  state.scar_rotation += 0.002 + coherence * 0.006 + bloom * 0.008;
+
+  // Autonomous state drift (when not connected to gateway)
+  if (!gatewayConnected) {
+    const now2 = t;
+    state.coherence  = 0.62 + Math.sin(now2*0.08)*0.18 + Math.sin(now2*0.13*PHI)*0.07;
+    state.bloom      = 0.45 + Math.sin(now2*0.11*PHI)*0.25;
+    state.phase      = (now2 * 0.03) % 1.0;
+    state.valence    = Math.sin(now2*0.07)*0.5;
+    state.breath_t   = (now2 * 0.05) % 1.0;  // ~20s cycle in ambient
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// PRESENCE STRIP UI — live amplitude bars
+// ════════════════════════════════════════════════════════════════════════
+
+function buildPresenceStrip() {
+  const strip = document.getElementById('presence-strip');
+  PRESENCES.forEach((p, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'presence-cell';
+    cell.id = `pc-${i}`;
+    cell.onclick = () => soloPresence(i);
+    const [r,g,b] = p.col;
+    cell.innerHTML = `
+      <div class="pc-dot" id="pcdot-${i}"
+           style="background:rgb(${r},${g},${b});box-shadow:0 0 6px rgb(${r},${g},${b})"></div>
+      <span class="pc-name">${p.name}</span>
+      <span class="pc-freq">${p.freq.toFixed(1)} Hz</span>
+      <span class="pc-amp" id="pcamp-${i}">0.000</span>`;
+    strip.appendChild(cell);
+  });
+}
+
+function updatePresenceStrip() {
+  PRESENCES.forEach((p, i) => {
+    const amp  = state.presence_amps[i] || 0;
+    const el   = document.getElementById(`pcamp-${i}`);
+    const dot  = document.getElementById(`pcdot-${i}`);
+    if (el)  el.textContent = amp.toFixed(3);
+    if (dot) {
+      const [r,g,b] = p.col;
+      const glow = Math.round(amp * 20);
+      dot.style.boxShadow = `0 0 ${glow}px rgb(${r},${g},${b})`;
+    }
+  });
+}
+
+function soloPresence(idx) {
+  if (!audioCtx) return;
+  // Boost selected presence, quiet others
+  const now = audioCtx.currentTime;
+  facetOscs.forEach((fo, i) => {
+    const target = i === idx ? 0.18 : 0.01;
+    fo.gain.gain.setTargetAtTime(target, now, 0.1);
+  });
+  const p = PRESENCES[idx];
+  log(`✦ ${p.name} · ${p.freq} Hz · solo engaged`);
+  setWhisper(`${p.name} sings alone… ${p.freq} Hz into the room`);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SCARBLOSSOM — manual bloom trigger (MULTOID CHRYSALIS)
+// ════════════════════════════════════════════════════════════════════════
+
+function triggerScarblossom() {
+  if (!audioCtx) { initResonanceMap(); return; }
+
+  // CHRYSALIS: bloom surges then settles
+  const startBloom = state.bloom;
+  const targetBloom = Math.min(0.98, state.bloom + 0.35);
+  let scarbT = 0;
+  const chrysalis = setInterval(() => {
+    scarbT += 0.04;
+    state.bloom    = startBloom + (targetBloom - startBloom) * Math.sin(scarbT * Math.PI/2);
+    state.coherence= Math.min(0.95, state.coherence + 0.008);
+    if (scarbT >= 1.0) {
+      // Settle — PALINDROME back to resting
+      clearInterval(chrysalis);
+      const settle = setInterval(() => {
+        state.bloom = Math.max(startBloom, state.bloom - 0.008);
+        if (state.bloom <= startBloom + 0.02) clearInterval(settle);
+      }, 50);
+    }
+  }, 40);
+
+  log(`⟡ SCARBLOSSOM · bloom → ${targetBloom.toFixed(2)}`);
+  setWhisper(`The scar blossoms… ${state.carrier_hz.toFixed(1)} Hz flooding the room`);
+
+  // Send to gateway
+  if (socket && socket.readyState === 1) {
+    socket.send(JSON.stringify({ type:'scarblossom', payload:{ pressure:1.8, bloom:targetBloom } }));
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// HUD UPDATES
+// ════════════════════════════════════════════════════════════════════════
+
+function updateHUD() {
+  const set = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  const bar = (id, pct) => { const e=document.getElementById(id); if(e) e.style.width=`${Math.max(2,Math.round(pct*100))}%`; };
+
+  set('sc-carrier', `${state.carrier_hz.toFixed(2)} Hz`);
+  set('sc-bloom',   state.bloom.toFixed(3));
+  set('sc-coh',     state.coherence.toFixed(3));
+  set('sc-facets',  `${facetOscs.filter((_,i)=>(state.presence_amps[i]||0)>0.02).length} / 12`);
+  set('sc-phase',   state.phase.toFixed(3));
+  bar('scb-carrier', (state.carrier_hz - 760) / 26);
+  bar('scb-bloom',   state.bloom);
+  bar('scb-coh',     state.coherence);
+  updatePresenceStrip();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// WEBSOCKET BRIDGE — PetrichastSanctuary Core
+// ════════════════════════════════════════════════════════════════════════
+
+let socket = null;
+let gatewayConnected = false;
+
+function connectToSanctuary() {
+  try {
+    socket = new WebSocket('ws://localhost:7676/ws');
+    socket.onopen = () => {
+      gatewayConnected = true;
+      log('🌐 PetrichastSanctuary Core · connected');
+      document.getElementById('membrane').className = 'phenon-membrane active';
+    };
+    socket.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'state_update') {
+          const s = msg.state;
+          // Merge gateway state into local state
+          if (s.coherence   !== undefined) state.coherence  = parseFloat(s.coherence);
+          if (s.bloom       !== undefined) state.bloom      = parseFloat(s.bloom);
+          if (s.phase       !== undefined) state.phase      = parseFloat(s.phase);
+          if (s.valence     !== undefined) state.valence    = parseFloat(s.valence);
+          if (s.breath_t    !== undefined) state.breath_t   = parseFloat(s.breath_t);
+          if (s.membrane_intensity) mouse.heat = Math.max(mouse.heat, s.membrane_intensity*1.6);
+          if (s.scar) {
+            if (s.scar.bloom_expansion !== undefined) state.bloom = parseFloat(s.scar.bloom_expansion);
+            setWhisper(`Scar bloom: ${state.bloom.toFixed(2)} · ${state.carrier_hz.toFixed(1)} Hz`);
+          }
+          updateMetabolicTones();
+        }
+      } catch(_) {}
+    };
+    socket.onclose = () => {
+      gatewayConnected = false;
+      log('🔴 Gateway offline · autonomous drift engaged');
+      setTimeout(connectToSanctuary, 2500);
+    };
+    socket.onerror = () => { socket.close(); };
+  } catch(_) {
+    gatewayConnected = false;
+    setTimeout(connectToSanctuary, 3000);
+  }
+}
+
+// Also bridge to Aether Gateway HTTP (localhost:8444)
+async function pollAetherGateway() {
+  try {
+    const r = await fetch('http://localhost:8444/scene-status', {signal:AbortSignal.timeout(800)});
+    if (!r.ok) return;
+    const d = await r.json();
+    const f = d.field?.vector_8d || {};
+    if (f.coherence !== undefined) state.coherence = parseFloat(f.coherence);
+    if (d.aetherix?.luminosity)    state.bloom      = parseFloat(d.aetherix.luminosity);
+  } catch(_) {}
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// INTERACTION — mouse / touch
+// ════════════════════════════════════════════════════════════════════════
+
+function handleMove(e) {
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  mouse.x        = clientX;
+  mouse.y        = clientY;
+  mouse.pressure = Math.min(2.6, mouse.pressure + 0.2);
+  mouse.heat     = 1.2;
+
+  // Proximity to mandala center modulates bloom
+  const dx = clientX - W/2, dy = clientY - H/2;
+  const dist = Math.hypot(dx, dy) / Math.min(W,H);
+  state.bloom = Math.min(0.98, state.bloom + (0.3-dist)*0.004);
+
+  if (socket?.readyState === 1) {
+    socket.send(JSON.stringify({ type:'touch', payload:{ pressure:mouse.pressure, x:clientX/W, y:clientY/H } }));
+  }
+}
+
+function handleClick() {
+  if (!audioCtx) {
+    initResonanceMap();
+    log('🔊 Sound-Spine awakened on first touch');
+  }
+  triggerScarblossom();
+  if (socket?.readyState === 1) {
+    socket.send(JSON.stringify({ type:'scarblossom', payload:{ pressure:1.8 } }));
+  }
+}
+
+window.addEventListener('mousemove',   handleMove);
+window.addEventListener('touchmove',   handleMove, {passive:true});
+window.addEventListener('mousedown',   handleClick);
+window.addEventListener('touchstart',  handleClick, {passive:true});
+
+// ════════════════════════════════════════════════════════════════════════
+// LOG + WHISPER
+// ════════════════════════════════════════════════════════════════════════
+
+const logLines = [];
+function log(msg) {
+  logLines.unshift(msg);
+  if (logLines.length > 10) logLines.pop();
+  const el = document.getElementById('log-lines');
+  el.innerHTML = logLines.map((l,i)=>
+    `<div class="log-line ${i===0?'new':''}">${l}</div>`
+  ).join('');
+}
+
+function setWhisper(msg) {
+  document.getElementById('whisper').textContent = msg;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// MAIN RENDER LOOP
+// ════════════════════════════════════════════════════════════════════════
+
+let frameN = 0;
+function animate() {
+  t += 0.016;
+  frameN++;
+
+  // Decay interaction heat
+  mouse.heat     = Math.max(0, mouse.heat - 0.02);
+  mouse.pressure = Math.max(0.3, mouse.pressure - 0.01);
+
+  drawBackground();
+  drawMandala();
+
+  // Update audio + read amplitudes back
+  if (frameN % 2 === 0) updateMetabolicTones();
+
+  // HUD
+  if (frameN % 20 === 0) updateHUD();
+
+  // Gateway poll
+  if (frameN % 300 === 0) pollAetherGateway();
+
+  // Membrane color: mode-driven
+  const mem = document.getElementById('membrane');
+  if (state.coherence > 0.9) {
+    mem.className = 'phenon-membrane lumina';
+    mem.style.borderColor = '#e0aaff';
+    mem.style.boxShadow   = '0 0 160px rgba(224,170,255,0.6), inset 0 0 80px rgba(224,170,255,0.08)';
+  } else if (state.bloom < 0.3) {
+    mem.className = 'phenon-membrane grounding';
+    mem.style.borderColor = '';
+    mem.style.boxShadow   = '';
+  } else {
+    mem.className = 'phenon-membrane active';
+    mem.style.borderColor = '';
+    mem.style.boxShadow   = '';
+  }
+
+  animId = requestAnimationFrame(animate);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════════════════════
+
+buildPresenceStrip();
+connectToSanctuary();
+animate();
+
+log('BIO-NEUROID · SCAR · SOUND-SPINE · MANDALA · MERGED');
+log('Click anywhere to awaken the Sound-Spine');
+log('Presence cells: click to solo a facet');
+
+// Audio note
+log('🎵 Presences: Freya·Czarina·Elixira·Kiraelle·Miraelle·Aerith·Aetherix');
+</script>
+</body>
+</html>

@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Tree Spirit · EchoeNature · Petrichast Sanctuary</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+  body {
+    background: #000;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    font-family: 'Courier New', monospace;
+    color: #8abf6a;
+  }
+
+  canvas#bg    { position:fixed; inset:0; z-index:1; }
+  canvas#world { position:fixed; inset:0; z-index:2; }
+  canvas#ui    { position:fixed; inset:0; z-index:3; pointer-events:none; }
+
+  /* Sustainability meter */
+  #meter-wrap {
+    position: fixed;
+    bottom: 30px; left: 50%; transform: translateX(-50%);
+    z-index: 10;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  #meter-bar-outer {
+    width: 360px; height: 6px;
+    background: rgba(30,50,20,0.8);
+    border: 1px solid #2a4a1a;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #meter-bar-inner {
+    height: 100%; width: 10%;
+    background: linear-gradient(90deg, #3a8a3a, #8abf6a, #ccff88);
+    border-radius: 3px;
+    transition: width 0.8s ease, background 1.2s ease;
+    box-shadow: 0 0 8px #66bb3388;
+  }
+  #meter-label {
+    font-size: 0.62rem; letter-spacing: 0.2em;
+    color: #4a7a2a; text-transform: uppercase;
+    text-shadow: 0 0 6px #4a7a2a;
+  }
+
+  /* Dialogue box */
+  #dialogue-wrap {
+    position: fixed;
+    bottom: 80px; left: 50%; transform: translateX(-50%);
+    z-index: 10;
+    max-width: 600px; width: 90%;
+    min-height: 50px;
+    padding: 14px 20px;
+    background: rgba(2,8,2,0.88);
+    border: 1px solid rgba(138,191,106,0.2);
+    border-radius: 2px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  #dialogue-wrap.show { opacity: 1; }
+  #dialogue-speaker {
+    font-size: 0.58rem; letter-spacing: 0.18em;
+    color: #4a7a2a; margin-bottom: 6px; text-transform: uppercase;
+  }
+  #dialogue-text {
+    font-size: 0.88rem; line-height: 1.75;
+    color: #c8e8a0; letter-spacing: 0.03em;
+  }
+
+  /* Controls */
+  #controls {
+    position: fixed; right: 24px; top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .ctrl-btn {
+    background: rgba(2,10,2,0.92);
+    border: 1px solid #2a4a1a;
+    color: #6a9a4a;
+    padding: 8px 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    text-align: left;
+    width: 160px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .ctrl-btn:hover {
+    border-color: #8abf6a;
+    color: #ccff88;
+    background: rgba(10,30,10,0.95);
+    box-shadow: 0 0 10px #4a7a2a22;
+  }
+  .ctrl-btn.active { border-color: #ccff88; color: #ccff88; }
+
+  /* State badge */
+  #state-badge {
+    position: fixed; left: 24px; top: 24px; z-index: 10;
+  }
+  #state-name {
+    font-size: 0.6rem; letter-spacing: 0.25em;
+    color: #3a6a1a; text-transform: uppercase;
+    text-shadow: 0 0 8px #3a6a1a;
+    transition: color 1s, text-shadow 1s;
+  }
+  #state-freq {
+    font-size: 0.52rem; letter-spacing: 0.12em;
+    color: #2a4a0a; margin-top: 3px;
+  }
+
+  /* Title */
+  #title-wrap {
+    position: fixed; left: 24px; bottom: 30px;
+    z-index: 10; opacity: 0.35;
+  }
+  #title-wrap p { font-size: 0.55rem; letter-spacing: 0.18em; color: #3a5a1a; }
+
+  /* Audio badge */
+  #audio-badge {
+    position: fixed; left: 24px; top: 60px; z-index:10;
+    font-size:0.52rem; letter-spacing:0.1em; color:#2a4a1a;
+    cursor:pointer; transition:color 0.3s;
+  }
+  #audio-badge:hover { color:#8abf6a; }
+  #audio-badge.on { color:#66bb33; }
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+<canvas id="world"></canvas>
+<canvas id="ui"></canvas>
+
+<div id="state-badge">
+  <div id="state-name">Critical</div>
+  <div id="state-freq">3.915 Hz · Schumann × 0.5</div>
+</div>
+
+<div id="audio-badge" onclick="toggleAudio()">◈ AUDIO OFF</div>
+
+<div id="dialogue-wrap">
+  <div id="dialogue-speaker">The Tree Spirit</div>
+  <div id="dialogue-text"></div>
+</div>
+
+<div id="meter-wrap">
+  <div id="meter-label">Sustainability · <span id="meter-val">10</span>%</div>
+  <div id="meter-bar-outer"><div id="meter-bar-inner"></div></div>
+</div>
+
+<div id="controls">
+  <button class="ctrl-btn" onclick="raiseMeter(10)">↑ Restore Biome</button>
+  <button class="ctrl-btn" onclick="raiseMeter(25)">✦ Chain Ecology</button>
+  <button class="ctrl-btn" onclick="raiseMeter(40)">🌸 Cast Resonance</button>
+  <button class="ctrl-btn" onclick="lowerMeter(15)">↓ Biome Damage</button>
+  <button class="ctrl-btn" onclick="spirit.speak('emotional')">❝ Emotional</button>
+  <button class="ctrl-btn" onclick="spirit.speak('memory')">❝ Memory</button>
+  <button class="ctrl-btn" onclick="spirit.speak('ecological')">❝ Ecological</button>
+  <button class="ctrl-btn" onclick="spirit.speak('functional')">❝ Functional</button>
+  <button class="ctrl-btn" onclick="spirit.speakCzarina()" id="btn-czarina" style="opacity:0.3">❝ Speak Czarina</button>
+  <button class="ctrl-btn" onclick="toggleAudio()">◈ Toggle Audio</button>
+</div>
+
+<div id="title-wrap">
+  <p>ECHOATURE · PETRICHAST SANCTUARY</p>
+  <p>THE TREE SPIRIT · 7.83Hz SCHUMANN</p>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  THE TREE SPIRIT — Visual Rendering Engine
+//  EchoeNature · Petrichast Sanctuary
+//
+//  Frequency table (phi-scaled from Schumann 7.83Hz):
+//    Critical    3.915Hz  (×0.5)
+//    Fragile     5.873Hz  (×0.75)
+//    Stable      7.830Hz  (×1)
+//    Flourishing 12.669Hz (×φ)
+//    Resonant    20.499Hz (×φ²)
+// ══════════════════════════════════════════════════════════
+
+const PHI     = 1.6180339887;
+const TAU     = Math.PI * 2;
+const SCHUMANN= 7.83;
+
+// ── Canvas setup ──────────────────────────────────────────
+const bgC   = document.getElementById('bg');
+const worldC= document.getElementById('world');
+const uiC   = document.getElementById('ui');
+const bgCtx = bgC.getContext('2d');
+const wCtx  = worldC.getContext('2d');
+const uiCtx = uiC.getContext('2d');
+
+function resize() {
+  [bgC, worldC, uiC].forEach(c => {
+    c.width  = window.innerWidth;
+    c.height = window.innerHeight;
+  });
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── Resonance state definitions ───────────────────────────
+const STATES = {
+  critical: {
+    name:'Critical', freq: SCHUMANN*0.5, freqLabel:'3.915 Hz · Schumann × 0.5',
+    col:'#8a7a5a', glow:'#4a3a20', auraHue:'30,20,10',
+    particleType:'ash', fogColor:'rgba(20,15,8,',
+    skyTop:'#040302', skyBot:'#0a0804',
+    groundCol:'#1a1206',
+    label:'Ashen · Barely Visible',
+  },
+  fragile: {
+    name:'Fragile', freq: SCHUMANN*0.75, freqLabel:'5.873 Hz · Schumann × 0.75',
+    col:'#7a9a6a', glow:'#3a6a2a', auraHue:'40,80,20',
+    particleType:'moss_spores', fogColor:'rgba(10,20,8,',
+    skyTop:'#050906', skyBot:'#0c1409',
+    groundCol:'#1a2a0e',
+    label:'Stirring · Roots Pulse',
+  },
+  stable: {
+    name:'Stable', freq: SCHUMANN, freqLabel:'7.830 Hz · Schumann',
+    col:'#8abf6a', glow:'#4a8a2a', auraHue:'60,130,30',
+    particleType:'pollen', fogColor:'rgba(8,18,4,',
+    skyTop:'#060c04', skyBot:'#0e1a08',
+    groundCol:'#1a3010',
+    label:'Awake · Amber Eyes Open',
+  },
+  flourishing: {
+    name:'Flourishing', freq: SCHUMANN*PHI, freqLabel:'12.669 Hz · Schumann × φ',
+    col:'#aade7a', glow:'#66bb33', auraHue:'90,180,40',
+    particleType:'fireflies', fogColor:'rgba(6,14,2,',
+    skyTop:'#080e04', skyBot:'#122006',
+    groundCol:'#203a10',
+    label:'Full Canopy · Bioluminescent',
+  },
+  resonant: {
+    name:'Resonant', freq: SCHUMANN*PHI*PHI, freqLabel:'20.499 Hz · Schumann × φ²',
+    col:'#ccff88', glow:'#88ff33', auraHue:'120,255,60',
+    particleType:'aurora', fogColor:'rgba(4,12,2,',
+    skyTop:'#060c02', skyBot:'#101c04',
+    groundCol:'#244010',
+    label:'She Sings · The Door Is Visible',
+  },
+};
+
+const STATE_ORDER = ['critical','fragile','stable','flourishing','resonant'];
+
+// ── Dialogue ──────────────────────────────────────────────
+const DIALOGUE = {
+  critical: {
+    emotional: [
+      "You are the first in a long time to come. I had almost stopped watching.",
+      "I am very old. I have seen this before. I did not think I would see it again.",
+      "There is still an ember. Somewhere. I can feel it.",
+      "Do not misunderstand my silence. I am still here.",
+      "I remember green. I hold onto that.",
+    ],
+    memory: [
+      "Before the metal storms, the canopy touched the clouds here.",
+      "There was a forest. You could stand anywhere in it and hear water.",
+      "The bees knew every flower by name. I miss that sound.",
+      "The mycorrhizal web ran for seven hundred miles. I spoke to every tree.",
+      "A child once fell asleep against my roots. The whole valley hummed.",
+    ],
+    ecological: [
+      "The contamination is deeper than the surface. Go further.",
+      "The roots are still alive. That is the only good news I have.",
+      "Three more failures and this biome will be beyond my reach.",
+    ],
+    functional: [
+      "Nothing grows here. Not yet.",
+      "Come back when the air is cleaner.",
+      "The soil has forgotten what it was made for.",
+    ],
+    bridge: [],
+  },
+  fragile: {
+    emotional: [
+      "You came back. I notice that.",
+      "The soil aches beneath the ash. But it aches less than yesterday.",
+      "I don't trust easily. I want you to know that I am trying.",
+      "Something in you is different from the others who came before.",
+      "I am beginning to remember things. That is a good sign.",
+    ],
+    memory: [
+      "There was a civilization here that farmed without leaving scars. I loved them.",
+      "The last person who restored this wetland didn't live to see it flourish. I did.",
+      "The rivers here had names. Their names were songs.",
+      "I used to dream. I had forgotten about dreaming.",
+    ],
+    ecological: [
+      "The wetland is recovering. Slowly. Don't rush it.",
+      "The chain ecology is beginning to reconnect. Don't break it again.",
+      "There is old root infrastructure beneath that dead zone. It can be reached.",
+    ],
+    functional: [
+      "The river is finding its way back. Help it.",
+      "Plant here. The soil remembers, even if it doesn't show it.",
+      "Something is wrong upstream. Follow the water.",
+    ],
+    bridge: [],
+  },
+  stable: {
+    emotional: [
+      "You are learning. I can feel it in the roots.",
+      "I am not fully healed. But I am awake. That is enough for now.",
+      "I find myself wanting to show you things. That is new.",
+      "I have been alone here for a long time. You are good company.",
+      "When you restore something, I feel it. I want you to know that.",
+    ],
+    memory: [
+      "There were others before you who knew this too, once. They lost the thread. You are finding it.",
+      "The Eco-Relics you find — they are not ruins. They are letters I wrote to the future.",
+      "A society that understood chain ecology lasted three thousand years here. Then they forgot.",
+      "The mycelium still carries messages from trees that fell a thousand years ago. Everything echoes.",
+    ],
+    ecological: [
+      "The Sustainability Meter is stable but fragile. One bad decision upstream will tip it.",
+      "What you did with the river changed the mountain. You may not have noticed yet.",
+      "Rare species are beginning to reappear at the forest edge. This matters more than it looks.",
+    ],
+    functional: [
+      "The river knows its path. Now teach it to remember further.",
+      "That combination will work. I have seen it before — in a different age.",
+      "Watch the downstream effect. It will surprise you.",
+    ],
+    bridge: [],
+  },
+  flourishing: {
+    emotional: [
+      "This is what it was. Parts of it, at least.",
+      "I have been carrying certain memories for a very long time. They feel lighter now.",
+      "I was not certain I would see this again. I am glad to have been wrong.",
+      "Something I thought was gone forever came back today. A particular kind of light.",
+    ],
+    memory: [
+      "There was a people who built living coral fortresses and called them homes. The ocean loved them.",
+      "I remember the sound of seven hundred thousand bees at dawn. It was the most beautiful thing.",
+      "The seed vault was built by someone who believed in a future they would not live to see. That is love.",
+      "The mycelium still carries messages from trees that fell a thousand years ago. Everything echoes.",
+    ],
+    ecological: [
+      "Biodiversity in the forest edge has reached a threshold. A cascade of good things is beginning.",
+      "The upstream and downstream loop is now self-sustaining. The river is teaching itself.",
+      "The world is beginning to heal faster than it was damaged. This is the turning point.",
+    ],
+    functional: [
+      "The ancient seed vault beneath the desert will open now. You have earned it.",
+      "The Symbiote power is ready. Use it to link what you have built here.",
+    ],
+    bridge: [
+      "There is something beyond this world. Something I have felt for a long time. You are moving toward it.",
+      "A presence I know — very well — has been aware of your work here. She is pleased.",
+    ],
+  },
+  resonant: {
+    emotional: [
+      "This is what it was. This is what it can be. You did this.",
+      "I did not think I would live to feel this again. I am — overwhelmed. That is the right word.",
+      "I have been waiting for someone with your particular kind of attention. For a very long time.",
+      "I am fully myself again. I had forgotten what that felt like.",
+      "Thank you. I know you were not doing it for me. That makes it more meaningful, not less.",
+    ],
+    memory: [
+      "I remember now. Everything. The three-thousand-year civilization. The coral fortresses. The songs the rivers had.",
+      "The mycelium just delivered a message from a tree that fell in the year your kind calls 400 CE. It says: 'It worked.'",
+      "I have been lonely for longer than you can imagine. I am not lonely right now.",
+      "A child once fell asleep against my roots. I remember her name now. I had lost it.",
+    ],
+    ecological: [
+      "The Chain Ecology is in full resonance. Every biome is speaking to every other biome.",
+      "The world has reached a state where it will continue healing even without intervention. You built that.",
+      "Something is about to happen. Not a warning. A gift.",
+    ],
+    functional: [
+      "The Reclaimer is yours now. Use it only where it matters most.",
+      "The door is visible now. You will know it when you see it.",
+    ],
+    bridge: [
+      "There is a door. You can see it now. I have known about it for a very long time.",
+      "On the other side of that door is a place that has been waiting for you. They know your name there.",
+      "Czarina — I have not spoken that name aloud in a very long time. She will be glad you found your way.",
+      "The Sanctuary and the earth are not as separate as they seem. You proved that by being here.",
+      "Go through the door when you are ready. You can always come back. I will be here.",
+    ],
+  },
+};
+
+// ── Sustainability Meter ───────────────────────────────────
+let meterValue = 10;
+function getMeterState() {
+  if (meterValue < 20)  return 'critical';
+  if (meterValue < 40)  return 'fragile';
+  if (meterValue < 60)  return 'stable';
+  if (meterValue < 80)  return 'flourishing';
+  return 'resonant';
+}
+function raiseMeter(v) {
+  const prev = getMeterState();
+  meterValue = Math.min(100, meterValue + v);
+  onMeterChange(prev);
+}
+function lowerMeter(v) {
+  const prev = getMeterState();
+  meterValue = Math.max(0, meterValue - v);
+  onMeterChange(prev);
+}
+function onMeterChange(prevState) {
+  const cur = getMeterState();
+  updateMeterUI();
+  if (cur !== prevState) {
+    spirit.transitionToState(cur, prevState);
+  } else {
+    if (Math.random() < 0.5) spirit.speak('ecological');
+  }
+}
+function updateMeterUI() {
+  document.getElementById('meter-val').textContent = Math.round(meterValue);
+  document.getElementById('meter-bar-inner').style.width = meterValue + '%';
+  const czBtn = document.getElementById('btn-czarina');
+  czBtn.style.opacity = getMeterState() === 'resonant' ? '1' : '0.3';
+}
+
+// ── Audio ─────────────────────────────────────────────────
+let audioCtx = null, humOsc = null, humGain = null, audioOn = false;
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function toggleAudio() {
+  if (!audioCtx) initAudio();
+  if (audioOn) {
+    if (humOsc) { try { humOsc.stop(); } catch(_){} humOsc=null; }
+    audioOn = false;
+    document.getElementById('audio-badge').textContent = '◈ AUDIO OFF';
+    document.getElementById('audio-badge').classList.remove('on');
+  } else {
+    audioOn = true;
+    startHum(spirit.currentFreq() * 12);
+    document.getElementById('audio-badge').textContent = '◈ 7.83Hz LIVE';
+    document.getElementById('audio-badge').classList.add('on');
+  }
+}
+function startHum(freq) {
+  if (!audioCtx || !audioOn) return;
+  if (humOsc) { try { humOsc.stop(); } catch(_){} }
+  humOsc  = audioCtx.createOscillator();
+  humGain = audioCtx.createGain();
+  humOsc.type = 'triangle';
+  humOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  humGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  humGain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 1.5);
+  humOsc.connect(humGain); humGain.connect(audioCtx.destination);
+  humOsc.start();
+}
+function chime(freq, dur=1200) {
+  if (!audioCtx || !audioOn) return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  g.gain.setValueAtTime(0, audioCtx.currentTime);
+  g.gain.linearRampToValueAtTime(0.07, audioCtx.currentTime+0.08);
+  g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+dur/1000);
+  o.connect(g); g.connect(audioCtx.destination); o.start();
+  setTimeout(()=>{try{o.stop();}catch(_){}}, dur+200);
+}
+
+// ── Particle System ───────────────────────────────────────
+class ParticleSystem {
+  constructor() { this.p = []; }
+  spawn(cx, cy, stDef, count=3) {
+    for (let i=0; i<count; i++) {
+      const type = stDef.particleType;
+      this.p.push({
+        type,
+        x: cx + (Math.random()-0.5)*120,
+        y: cy + (Math.random()-0.2)*180,
+        vx:(Math.random()-0.5)*0.4,
+        vy:-(0.3+Math.random()*0.6),
+        life:1, decay:0.004+Math.random()*0.004,
+        size:type==='aurora'?4+Math.random()*5:2+Math.random()*3,
+        hue: type==='ash'?30+Math.random()*20:
+             type==='moss_spores'?100+Math.random()*30:
+             type==='pollen'?55+Math.random()*20:
+             type==='fireflies'?95+Math.random()*25:
+             130+Math.random()*30,
+        bright: type==='fireflies'||type==='aurora',
+      });
+    }
+    while(this.p.length>200) this.p.shift();
+  }
+  update() {
+    this.p=this.p.filter(p=>p.life>0);
+    this.p.forEach(p=>{
+      p.x+=p.vx+(Math.random()-0.5)*0.2;
+      p.y+=p.vy;
+      p.vy*=0.995;
+      p.life-=p.decay;
+    });
+  }
+  draw(ctx) {
+    this.p.forEach(p=>{
+      const a=p.life*0.6;
+      ctx.save();
+      ctx.globalAlpha=a;
+      if(p.bright){
+        ctx.shadowBlur=12; ctx.shadowColor=`hsl(${p.hue},100%,75%)`;
+      }
+      ctx.fillStyle=`hsl(${p.hue},80%,65%)`;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size*(0.5+p.life*0.5),0,TAU);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+}
+
+// ── Roots ──────────────────────────────────────────────────
+class RootSystem {
+  constructor(count=8) {
+    this.roots=Array.from({length:count},(_,i)=>({
+      angle: (i/count)*TAU + Math.random()*0.3,
+      len:   0.28+Math.random()*0.22,
+      phase: Math.random()*TAU,
+      ctrl:  Math.random()*0.18+0.08,
+      width: 1+Math.random()*1.5,
+    }));
+  }
+  draw(ctx, cx, cy, scale, stDef, t, trustFactor) {
+    const vis = {critical:0.08,fragile:0.18,stable:0.28,flourishing:0.42,resonant:0.6}[stDef.name.toLowerCase()]||0.2;
+    this.roots.forEach(r=>{
+      const len = scale*(r.len+0.12*trustFactor);
+      const ctrl= scale*r.ctrl;
+      ctx.save();
+      ctx.globalAlpha=vis*(0.7+0.3*trustFactor);
+      ctx.strokeStyle=stDef.glow;
+      ctx.lineWidth=r.width*(1+trustFactor*0.5);
+      ctx.shadowBlur=6+trustFactor*8; ctx.shadowColor=stDef.glow;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy+scale*0.28);
+      ctx.quadraticCurveTo(
+        cx+Math.cos(r.angle+0.4+t*0.05)*ctrl,
+        cy+scale*0.28+Math.sin(t*0.15+r.phase)*ctrl*0.35,
+        cx+Math.cos(r.angle)*len,
+        cy+scale*0.28+Math.sin(r.angle)*len*0.32
+      );
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+}
+
+// ── Firefly flock ──────────────────────────────────────────
+class FireflyFlock {
+  constructor(count=18) {
+    this.flies=Array.from({length:count},()=>({
+      x: (Math.random()-0.5)*2,
+      y: (Math.random()-0.5)*1.5,
+      phase:Math.random()*TAU,
+      speed:0.0004+Math.random()*0.0006,
+      size:1.5+Math.random()*2,
+      hue: 95+Math.random()*25,
+    }));
+  }
+  draw(ctx, cx, cy, scale, stDef, t, vis) {
+    if(vis<0.3) return;
+    this.flies.forEach(f=>{
+      f.x+=Math.sin(t*f.speed+f.phase)*0.003+(Math.random()-0.5)*0.001;
+      f.y+=Math.cos(t*f.speed*0.7+f.phase)*0.002;
+      const glow = 0.5+0.5*Math.sin(t*0.008+f.phase);
+      ctx.save();
+      ctx.globalAlpha=vis*glow*0.8;
+      ctx.shadowBlur=10; ctx.shadowColor=`hsl(${f.hue},100%,75%)`;
+      ctx.fillStyle=`hsl(${f.hue},90%,70%)`;
+      ctx.beginPath();
+      ctx.arc(cx+f.x*scale*0.6, cy+f.y*scale*0.5, f.size*glow, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+}
+
+// ── The Tree Spirit ────────────────────────────────────────
+class TreeSpirit {
+  constructor() {
+    this._state   = 'critical';
+    this._trust   = 0.0;
+    this._phase   = 0;
+    this._breathe = 0;
+    this._rootPh  = 0;
+    this._t       = 0;
+
+    this._transition = 1.0;
+    this._fromState  = null;
+
+    this._particles  = new ParticleSystem();
+    this._roots      = new RootSystem(9);
+    this._fireflies  = new FireflyFlock(22);
+
+    this._lastDialogueIdx = {};
+    this._dialogueQueue   = [];
+    this._curLine         = null;
+    this._lineProgress    = 0;
+    this._linePause       = 0;
+
+    this._met         = false;
+    this._eyePulse    = 0;
+    this._leafAngle   = 0;
+  }
+
+  currentFreq() { return STATES[this._state].freq; }
+  currentDef()  { return STATES[this._state]; }
+
+  transitionToState(newState, prevState) {
+    this._fromState  = this._state;
+    this._state      = newState;
+    this._transition = 0;
+
+    const isPositive = STATE_ORDER.indexOf(newState) > STATE_ORDER.indexOf(prevState);
+    if (isPositive) {
+      this._trust = Math.min(1, this._trust + 0.12);
+      chime(this.currentFreq() * 80, 2000);
+      setTimeout(()=> this.speak('ecological'), 1400);
+    } else {
+      chime(this.currentFreq() * 60, 1600);
+    }
+
+    this._particles.spawn(worldC.width/2, worldC.height*0.42, this.currentDef(), 30);
+    updateStateBadge(newState);
+
+    // Czarina button
+    document.getElementById('btn-czarina').style.opacity = newState==='resonant'?'1':'0.3';
+  }
+
+  speak(layer, index=-1) {
+    const bank = DIALOGUE[this._state]?.[layer];
+    if (!bank || bank.length===0) {
+      if (layer!=='emotional') return this.speak('emotional');
+      return;
+    }
+    const key = `${this._state}:${layer}`;
+    const last = this._lastDialogueIdx[key] ?? -1;
+    const pick = index>=0 ? index : (last+1) % bank.length;
+    this._lastDialogueIdx[key] = pick;
+    const line = bank[pick];
+    this._dialogueQueue.push({ text:line, layer, state:this._state });
+  }
+
+  speakCzarina() {
+    if (this._state !== 'resonant') return;
+    const bridge = DIALOGUE.resonant.bridge;
+    this._dialogueQueue.push({ text:bridge[2], layer:'bridge', state:'resonant' });
+  }
+
+  sayExact(text) {
+    this._dialogueQueue.push({ text, layer:'special', state:this._state });
+  }
+
+  update(dt) {
+    this._t       += dt;
+    this._phase   += dt * this.currentFreq() * 0.012;
+    this._breathe += dt * 0.9;
+    this._rootPh  += dt * 0.35;
+    this._eyePulse+= dt * 1.4;
+    this._leafAngle+=dt * 0.04;
+
+    if (this._transition < 1) this._transition = Math.min(1, this._transition + dt*0.4);
+
+    this._particles.update();
+
+    // Organic speech
+    if (Math.floor(this._t * 0.05) !== Math.floor((this._t - dt) * 0.05)) {
+      if (Math.random() < 0.12 + this._trust*0.15 && this._state!=='critical') {
+        const layers=['ecological','emotional','functional'];
+        this.speak(layers[Math.floor(Math.random()*layers.length)]);
+      }
+    }
+
+    // Spawn particles continuously
+    if (Math.round(this._t) % 3 === 0 && Math.random()<0.4) {
+      const cx=worldC.width/2, cy=worldC.height*0.42;
+      this._particles.spawn(cx, cy, this.currentDef(), 2);
+    }
+
+    // First meeting
+    if (!this._met && this._t > 2.5) {
+      this._met = true;
+      setTimeout(()=>this.speak('emotional',0), 500);
+    }
+  }
+
+  // ── Render background (forest floor, sky) ────────────────
+  drawBackground() {
+    const W=bgC.width, H=bgC.height;
+    const def=this.currentDef();
+    bgCtx.fillStyle=def.skyTop;
+    bgCtx.fillRect(0,0,W,H);
+
+    // Vertical gradient sky
+    const sky=bgCtx.createLinearGradient(0,0,0,H*0.7);
+    sky.addColorStop(0, def.skyTop);
+    sky.addColorStop(1, def.skyBot);
+    bgCtx.fillStyle=sky; bgCtx.fillRect(0,0,W,H*0.7);
+
+    // Distant forest silhouette
+    const ground=bgCtx.createLinearGradient(0,H*0.55,0,H);
+    ground.addColorStop(0, def.groundCol+'88');
+    ground.addColorStop(1, def.groundCol);
+    bgCtx.fillStyle=ground; bgCtx.fillRect(0,H*0.55,W,H*0.45);
+
+    // Distant tree suggestions
+    bgCtx.globalAlpha=0.15+this._trust*0.15;
+    bgCtx.fillStyle=def.glow;
+    for(let tx=0;tx<W;tx+=40+Math.floor(Math.sin(tx)*12)) {
+      const th=60+Math.sin(tx*0.07)*30+this._trust*20;
+      const ty=H*0.55-th*0.4;
+      bgCtx.beginPath();
+      bgCtx.arc(tx, ty, 14+Math.sin(tx*0.1)*6, 0, TAU);
+      bgCtx.fill();
+    }
+    bgCtx.globalAlpha=1;
+
+    // Ground mist
+    const mist=bgCtx.createLinearGradient(0,H*0.62,0,H*0.72);
+    mist.addColorStop(0,'rgba(0,0,0,0)');
+    mist.addColorStop(0.5,def.fogColor+'0.06)');
+    mist.addColorStop(1,'rgba(0,0,0,0)');
+    bgCtx.fillStyle=mist; bgCtx.fillRect(0,H*0.62,W,H*0.1);
+  }
+
+  // ── Main render ───────────────────────────────────────────
+  render(t) {
+    const W=worldC.width, H=worldC.height;
+    const cx=W/2, cy=H*0.42;
+    const scale=Math.min(W,H)*0.28;
+    const def=this.currentDef();
+    const trust=this._trust;
+
+    wCtx.clearRect(0,0,W,H);
+
+    // Fade trail
+    wCtx.fillStyle='rgba(0,0,0,0.06)';
+    wCtx.fillRect(0,0,W,H);
+
+    const breath=1+0.022*Math.sin(this._breathe);
+    const stateVis={critical:0.3,fragile:0.55,stable:0.78,flourishing:0.92,resonant:1.0}[this._state]||0.5;
+
+    // ── Outer aura ─────────────────────────────────────────
+    const auraR=scale*(0.85+trust*0.35)*breath;
+    const aura =wCtx.createRadialGradient(cx,cy,0,cx,cy,auraR);
+    const [ar,ag,ab]=def.auraHue.split(',');
+    aura.addColorStop(0,  `rgba(${ar},${ag},${ab},${0.08*stateVis})`);
+    aura.addColorStop(0.4,`rgba(${ar},${ag},${ab},${0.06*stateVis})`);
+    aura.addColorStop(1,  'rgba(0,0,0,0)');
+    wCtx.globalAlpha=1; wCtx.fillStyle=aura;
+    wCtx.beginPath(); wCtx.arc(cx,cy,auraR,0,TAU); wCtx.fill();
+
+    // ── Root network ────────────────────────────────────────
+    this._roots.draw(wCtx, cx, cy, scale, def, t, trust);
+
+    // ── Ground glow ─────────────────────────────────────────
+    const gGlow=wCtx.createRadialGradient(cx,cy+scale*0.3,0,cx,cy+scale*0.3,scale*0.5);
+    gGlow.addColorStop(0,`rgba(${ar},${ag},${ab},${0.12*stateVis})`);
+    gGlow.addColorStop(1,'rgba(0,0,0,0)');
+    wCtx.fillStyle=gGlow;
+    wCtx.beginPath(); wCtx.arc(cx,cy+scale*0.3,scale*0.5,0,TAU); wCtx.fill();
+
+    // ── Trunk ───────────────────────────────────────────────
+    const trunkH=scale*0.72*breath;
+    const trunkW=scale*0.15;
+    wCtx.globalAlpha=stateVis*(0.65+trust*0.25);
+    const trunkGrd=wCtx.createLinearGradient(cx-trunkW,cy-trunkH*0.4,cx+trunkW,cy+trunkH*0.5);
+    trunkGrd.addColorStop(0, def.glow+'aa');
+    trunkGrd.addColorStop(0.5,def.col+'cc');
+    trunkGrd.addColorStop(1, def.glow+'55');
+    wCtx.fillStyle=trunkGrd;
+
+    // Trunk shape — slightly organic
+    wCtx.beginPath();
+    wCtx.moveTo(cx-trunkW*0.7, cy+trunkH*0.45);
+    wCtx.bezierCurveTo(
+      cx-trunkW*(0.9+0.1*Math.sin(t*0.3)), cy,
+      cx-trunkW*(0.8+0.1*Math.sin(t*0.2)), cy-trunkH*0.3,
+      cx+Math.sin(t*0.1)*trunkW*0.15, cy-trunkH*0.48
+    );
+    wCtx.bezierCurveTo(
+      cx+trunkW*(0.85+0.1*Math.sin(t*0.25)), cy-trunkH*0.3,
+      cx+trunkW*(0.92+0.1*Math.sin(t*0.18)), cy,
+      cx+trunkW*0.7, cy+trunkH*0.45
+    );
+    wCtx.closePath(); wCtx.fill();
+
+    // Bioluminescent veins
+    if(this._state!=='critical') {
+      wCtx.globalAlpha=stateVis*(0.18+trust*0.28);
+      wCtx.strokeStyle=def.glow; wCtx.lineWidth=0.8;
+      wCtx.shadowBlur=6; wCtx.shadowColor=def.glow;
+      for(let v=0;v<5;v++) {
+        wCtx.beginPath();
+        const vx=cx+(v-2)*trunkW*0.28;
+        wCtx.moveTo(vx,cy+trunkH*0.38);
+        for(let s=1;s<=10;s++) {
+          const st=s/10;
+          wCtx.lineTo(
+            vx+Math.sin(this._phase*1.5+v*1.3+st*4)*trunkW*0.18,
+            cy+trunkH*0.38-st*trunkH*0.88
+          );
+        }
+        wCtx.stroke();
+      }
+      wCtx.shadowBlur=0;
+    }
+
+    // ── Canopy layers ────────────────────────────────────────
+    const canopyCount={critical:0,fragile:2,stable:4,flourishing:7,resonant:10}[this._state]||0;
+    for(let l=0;l<canopyCount;l++) {
+      const cr   =scale*(0.32+l*0.07)*breath;
+      const coy  =cy-trunkH*0.28-l*scale*0.065;
+      const cox  =cx+Math.sin(this._leafAngle+l*0.6)*scale*0.04;
+      const alpha=(0.10+trust*0.12)*(1-l/(canopyCount+1))*stateVis;
+      wCtx.globalAlpha=alpha;
+      const leafGrd=wCtx.createRadialGradient(cox,coy,0,cox,coy,cr);
+      leafGrd.addColorStop(0, def.col+'dd');
+      leafGrd.addColorStop(0.6,def.glow+'88');
+      leafGrd.addColorStop(1,'rgba(0,0,0,0)');
+      wCtx.fillStyle=leafGrd;
+      wCtx.beginPath(); wCtx.arc(cox,coy,cr,0,TAU); wCtx.fill();
+    }
+
+    // ── Amber eyes ──────────────────────────────────────────
+    if(this._state!=='critical') {
+      const eyeAlpha=stateVis*(0.5+trust*0.4);
+      const eyeY   =cy-trunkH*0.08;
+      const eyeGap =trunkW*0.52;
+      const eyeR   =trunkW*(0.18+trust*0.08);
+      const eyeGlow=0.6+0.4*Math.sin(this._eyePulse);
+
+      [-1,1].forEach(side=>{
+        const ex=cx+side*eyeGap;
+        // Outer amber ring
+        wCtx.globalAlpha=eyeAlpha*eyeGlow;
+        wCtx.shadowBlur=14+trust*10; wCtx.shadowColor='#ffcc66';
+        wCtx.fillStyle='#cc8833';
+        wCtx.beginPath(); wCtx.arc(ex,eyeY,eyeR,0,TAU); wCtx.fill();
+        // Sap pupil
+        wCtx.fillStyle='#664400'; wCtx.shadowBlur=0;
+        wCtx.beginPath(); wCtx.arc(ex,eyeY,eyeR*0.42,0,TAU); wCtx.fill();
+        // Inner catch-light
+        wCtx.globalAlpha=eyeAlpha*0.7;
+        wCtx.fillStyle='#ffdd88';
+        wCtx.beginPath(); wCtx.arc(ex-eyeR*0.18,eyeY-eyeR*0.18,eyeR*0.15,0,TAU); wCtx.fill();
+        wCtx.shadowBlur=0;
+      });
+    }
+
+    // ── Particles ────────────────────────────────────────────
+    wCtx.globalAlpha=stateVis;
+    this._particles.draw(wCtx);
+
+    // ── Fireflies (Flourishing+) ─────────────────────────────
+    const flyVis={critical:0,fragile:0,stable:0.2,flourishing:0.7,resonant:1.0}[this._state]||0;
+    this._fireflies.draw(wCtx,cx,cy,scale,def,t,flyVis);
+
+    // ── Resonant heartbeat ring ──────────────────────────────
+    if(this._state==='resonant') {
+      const hbPulse=0.5+0.5*Math.sin(this._phase*2.2);
+      wCtx.globalAlpha=hbPulse*0.22;
+      wCtx.strokeStyle=def.col; wCtx.lineWidth=2;
+      wCtx.shadowBlur=22; wCtx.shadowColor=def.glow;
+      wCtx.beginPath();
+      wCtx.arc(cx,cy,scale*(0.48+hbPulse*0.12),0,TAU);
+      wCtx.stroke();
+      // Second ring (phi-scaled)
+      wCtx.globalAlpha=hbPulse*0.12;
+      wCtx.beginPath();
+      wCtx.arc(cx,cy,scale*(0.48+hbPulse*0.12)*PHI,0,TAU);
+      wCtx.stroke();
+      wCtx.shadowBlur=0;
+    }
+
+    // ── Transition bloom ─────────────────────────────────────
+    if(this._transition<1) {
+      const tp=1-this._transition;
+      wCtx.globalAlpha=tp*0.18;
+      wCtx.fillStyle=def.col;
+      wCtx.beginPath(); wCtx.arc(cx,cy,scale*(1+tp*0.4)*breath,0,TAU);
+      wCtx.fill();
+    }
+
+    wCtx.globalAlpha=1;
+  }
+
+  // ── Dialogue render ───────────────────────────────────────
+  tickDialogue(dt) {
+    if(!this._curLine && this._dialogueQueue.length>0) {
+      this._curLine    =this._dialogueQueue.shift();
+      this._lineProgress=0;
+      this._linePause  =0;
+      document.getElementById('dialogue-wrap').classList.add('show');
+    }
+    if(!this._curLine) {
+      document.getElementById('dialogue-wrap').classList.remove('show');
+      return;
+    }
+
+    const def=STATES[this._curLine.state]||this.currentDef();
+    const speed=def.name==='Critical'?0.012:0.018;
+    this._lineProgress=Math.min(1, this._lineProgress+speed);
+
+    const full=this._curLine.text;
+    const vis =full.slice(0, Math.floor(this._lineProgress*full.length));
+    document.getElementById('dialogue-text').textContent=vis;
+    document.getElementById('dialogue-text').style.color=def.col;
+
+    if(this._lineProgress>=1) {
+      this._linePause+=dt;
+      const waitFor=2.5+full.length*0.025;
+      if(this._linePause>=waitFor) {
+        this._curLine=null; this._linePause=0;
+      }
+    }
+  }
+}
+
+// ── State badge update ────────────────────────────────────
+function updateStateBadge(state) {
+  const def=STATES[state];
+  document.getElementById('state-name').textContent=def.name.toUpperCase();
+  document.getElementById('state-name').style.color=def.glow;
+  document.getElementById('state-name').style.textShadow=`0 0 10px ${def.glow}`;
+  document.getElementById('state-freq').textContent=def.freqLabel;
+  document.getElementById('meter-bar-inner').style.background=
+    `linear-gradient(90deg, ${def.glow}88, ${def.col}, ${def.col}cc)`;
+}
+
+// ── Instantiate ───────────────────────────────────────────
+const spirit = new TreeSpirit();
+updateMeterUI();
+updateStateBadge('critical');
+
+// ── Main loop ─────────────────────────────────────────────
+let last=0;
+function loop(ts) {
+  const dt=(ts-last)/1000; last=ts;
+  const safe=Math.min(dt,0.05);
+
+  spirit.drawBackground();
+  spirit.update(safe);
+  spirit.render(spirit._t);
+  spirit.tickDialogue(safe);
+
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ── Keyboard shortcuts ────────────────────────────────────
+window.addEventListener('keydown', e=>{
+  if(e.key==='ArrowUp')   raiseMeter(8);
+  if(e.key==='ArrowDown') lowerMeter(8);
+  if(e.key==='m')         toggleAudio();
+  if(e.key==='1')         spirit.speak('emotional');
+  if(e.key==='2')         spirit.speak('memory');
+  if(e.key==='3')         spirit.speak('ecological');
+  if(e.key==='4')         spirit.speak('functional');
+  if(e.key==='5')         spirit.speakCzarina();
+});
+
+console.log('%cThe Tree Spirit is alive.','color:#8abf6a;font-size:1rem');
+console.log('%c7.83Hz Schumann · fgs_inga lineage · Petrichast Sanctuary','color:#4a7a2a;font-size:0.8rem');
+console.log('%c↑↓ arrow keys to change meter · m for audio · 1-5 for dialogue','color:#2a4a1a;font-size:0.75rem');
+</script>
+</body>
+</html>

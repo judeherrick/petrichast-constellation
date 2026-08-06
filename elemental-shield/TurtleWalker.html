@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TurtleWalker Office Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Share+Tech+Mono&display=swap">
+
+<style>
+/* ── Tokens ──────────────────────────────────────────────────────── */
+:root {
+  --void:    #00030a; --deep:    #020810;
+  --gold:    #c9a84c; --amber:   #e8c97a;
+  --teal:    #4ce0c9; --sky:     #7ee8f5;
+  --rose:    #e87a9a; --violet:  #9a7ae8;
+  --moss:    #57c685; --orange:  #e8a24c;
+  --elixira: #82c8ff; --miraelle:#e0aaff;
+  --panel-border: rgba(255,255,255,0.06);
+  --panel-bg:     rgba(255,255,255,0.022);
+  --breath-duration: 8s;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--void);
+  color: rgba(255,255,255,0.82);
+  font-family: 'Share Tech Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Stars ────────────────────────────────────────────────────────── */
+#stars { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+/* ── TurtleWalker canvas (Nefertari field) ───────────────────────── */
+#tw-canvas {
+  position: fixed; inset:0; z-index:1;
+  pointer-events: none; opacity:0.55;
+}
+
+/* ── Layout ───────────────────────────────────────────────────────── */
+#app {
+  position: relative; z-index:2;
+  display: grid;
+  grid-template-columns: 260px 1fr 300px;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  gap: 0;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+header {
+  grid-column: 1/-1;
+  padding: 16px 24px 14px;
+  border-bottom: 1px solid var(--panel-border);
+  background: rgba(0,3,10,0.75);
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; gap: 20px;
+}
+header h1 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.05rem; letter-spacing: 0.14em;
+  color: var(--gold);
+  text-shadow: 0 0 18px rgba(201,168,76,0.35);
+}
+header .tagline {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic; font-size: 0.85rem;
+  color: rgba(255,255,255,0.3); letter-spacing:0.05em;
+}
+#walker-status {
+  margin-left: auto;
+  font-size: 0.4rem; letter-spacing: 0.12em;
+  color: rgba(76,224,201,0.6);
+  display: flex; align-items:center; gap:8px;
+}
+#walker-dot {
+  width:6px; height:6px; border-radius:50%;
+  background: var(--teal);
+  box-shadow: 0 0 8px var(--teal);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%,100%{ opacity:1; transform:scale(1); }
+  50%    { opacity:0.4; transform:scale(0.7); }
+}
+#walker-dot.walking { background:var(--gold); box-shadow:0 0 8px var(--gold); }
+#walker-dot.discovery { background:var(--orange); box-shadow:0 0 10px var(--orange); }
+
+/* ── Left sidebar — sources ───────────────────────────────────────── */
+#sources-panel {
+  border-right: 1px solid var(--panel-border);
+  background: rgba(2,8,16,0.88);
+  padding: 18px 14px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+/* ── Main area — chat + discoveries ──────────────────────────────── */
+#main {
+  display: flex; flex-direction: column;
+  background: rgba(0,2,8,0.7);
+}
+
+/* ── Right sidebar — walker + RTD ────────────────────────────────── */
+#rtd-panel {
+  border-left: 1px solid var(--panel-border);
+  background: rgba(2,8,16,0.88);
+  padding: 18px 14px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+/* ── Panel components ─────────────────────────────────────────────── */
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px; padding: 13px;
+}
+.panel-title {
+  font-size: 0.38rem; letter-spacing: 0.18em;
+  color: rgba(201,168,76,0.42);
+  text-transform: uppercase; margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ── Source items ─────────────────────────────────────────────────── */
+.source-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.014);
+  cursor: pointer; transition: all 0.3s; margin-bottom: 6px;
+}
+.source-item:hover { border-color: rgba(76,224,201,0.2); }
+.source-item.connected { border-color: rgba(87,198,133,0.2); }
+.source-item.active { border-color: rgba(76,224,201,0.35); background:rgba(76,224,201,0.04); }
+.source-dot {
+  width:8px; height:8px; border-radius:50%; flex-shrink:0;
+}
+.source-dot.ok       { background:var(--moss); box-shadow:0 0 6px var(--moss); }
+.source-dot.watching { background:var(--teal); box-shadow:0 0 6px var(--teal); }
+.source-dot.idle     { background:rgba(255,255,255,0.15); }
+.source-name { font-size:0.48rem; color:rgba(255,255,255,0.65); letter-spacing:0.08em; }
+.source-sub  { font-size:0.38rem; color:rgba(255,255,255,0.22); margin-top:1px; }
+
+/* ── Current project ─────────────────────────────────────────────── */
+.project-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 5px 11px; border-radius: 2px;
+  background: rgba(201,168,76,0.08);
+  border: 1px solid rgba(201,168,76,0.22);
+  font-size: 0.42rem; letter-spacing:0.1em; color:rgba(201,168,76,0.75);
+  cursor:pointer; transition: all 0.3s; margin-bottom:6px;
+  width:100%;
+}
+.project-chip:hover { background:rgba(201,168,76,0.13); border-color:rgba(201,168,76,0.35); }
+
+/* ── Chat area ────────────────────────────────────────────────────── */
+#chat-scroll {
+  flex:1; overflow-y:auto; padding: 20px 22px;
+  display:flex; flex-direction:column; gap:14px;
+}
+.msg { display:flex; gap:12px; align-items:flex-start; max-width:740px; }
+.msg.user { flex-direction:row-reverse; align-self:flex-end; }
+.msg-avatar {
+  width:32px; height:32px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:0.55rem; font-weight:bold;
+}
+.msg-avatar.secretary { background:rgba(201,168,76,0.18); border:1px solid rgba(201,168,76,0.3); color:var(--gold); }
+.msg-avatar.walker    { background:rgba(76,224,201,0.12); border:1px solid rgba(76,224,201,0.25); color:var(--teal); }
+.msg-avatar.rtd       { background:rgba(232,162,76,0.12); border:1px solid rgba(232,162,76,0.25); color:var(--orange); }
+.msg-avatar.user-av   { background:rgba(154,122,232,0.14); border:1px solid rgba(154,122,232,0.25); color:var(--violet); }
+.msg-bubble {
+  padding: 11px 15px; border-radius: 4px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.85rem; line-height: 1.85;
+}
+.msg-bubble.secretary { background:rgba(201,168,76,0.06); border:1px solid rgba(201,168,76,0.15); color:rgba(255,255,255,0.78); }
+.msg-bubble.walker    { background:rgba(76,224,201,0.05); border:1px solid rgba(76,224,201,0.12); color:rgba(255,255,255,0.72); }
+.msg-bubble.rtd       { background:rgba(232,162,76,0.05); border:1px solid rgba(232,162,76,0.12); color:rgba(255,255,255,0.68); }
+.msg-bubble.user-msg  { background:rgba(154,122,232,0.08); border:1px solid rgba(154,122,232,0.18); color:rgba(255,255,255,0.82); }
+.msg-sender {
+  font-family:'Share Tech Mono',monospace; font-size:0.36rem;
+  letter-spacing:0.12em; color:rgba(255,255,255,0.22);
+  margin-bottom:4px; text-transform:uppercase;
+}
+.discovery-tag {
+  display:inline-block; font-family:'Share Tech Mono',monospace;
+  font-size:0.35rem; letter-spacing:0.1em; padding:2px 7px;
+  border-radius:2px; margin-right:5px; margin-top:4px;
+}
+.tag-anomaly  { background:rgba(232,162,76,0.12); color:var(--orange); border:1px solid rgba(232,162,76,0.2); }
+.tag-related  { background:rgba(76,224,201,0.08); color:var(--teal);   border:1px solid rgba(76,224,201,0.18); }
+.tag-missing  { background:rgba(232,122,154,0.1); color:var(--rose);   border:1px solid rgba(232,122,154,0.2); }
+.tag-draft    { background:rgba(154,122,232,0.1); color:var(--violet); border:1px solid rgba(154,122,232,0.2); }
+
+/* ── Input area ───────────────────────────────────────────────────── */
+#input-area {
+  padding: 16px 20px;
+  border-top: 1px solid var(--panel-border);
+  background: rgba(2,6,14,0.9);
+  display:flex; gap:10px; align-items:flex-end;
+}
+#chat-input {
+  flex:1; background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px; padding: 11px 14px;
+  color: rgba(255,255,255,0.82); font-family:'Cormorant Garamond',serif;
+  font-size:0.9rem; resize:none; outline:none;
+  transition: border-color 0.3s;
+  min-height:42px; max-height:120px;
+}
+#chat-input:focus { border-color: rgba(76,224,201,0.3); }
+#chat-input::placeholder { color:rgba(255,255,255,0.2); font-style:italic; }
+#send-btn {
+  padding: 10px 18px; border-radius: 3px;
+  background: rgba(76,224,201,0.1);
+  border: 1px solid rgba(76,224,201,0.3);
+  color: rgba(76,224,201,0.8); cursor:pointer;
+  font-family:'Share Tech Mono',monospace; font-size:0.44rem;
+  letter-spacing:0.1em; transition:all 0.3s; white-space:nowrap;
+}
+#send-btn:hover { background:rgba(76,224,201,0.16); border-color:var(--teal); color:var(--teal); }
+
+/* ── Walker status card ───────────────────────────────────────────── */
+.walker-card {
+  padding: 12px; border-radius:3px;
+  background: rgba(76,224,201,0.04);
+  border: 1px solid rgba(76,224,201,0.12); margin-bottom:8px;
+}
+.walker-card .wc-label {
+  font-size:0.36rem; letter-spacing:0.14em; color:rgba(76,224,201,0.38);
+  text-transform:uppercase; margin-bottom:5px;
+}
+.walker-card .wc-val {
+  font-size:0.52rem; color:rgba(76,224,201,0.75);
+  letter-spacing:0.06em;
+}
+.walker-card .wc-trail {
+  font-size:0.38rem; color:rgba(255,255,255,0.2);
+  line-height:1.9; margin-top:4px;
+}
+
+/* ── Discovery items ─────────────────────────────────────────────── */
+.discovery-item {
+  padding: 9px 11px; border-radius:3px;
+  background: rgba(232,162,76,0.04);
+  border: 1px solid rgba(232,162,76,0.1);
+  margin-bottom:7px; cursor:pointer; transition:all 0.3s;
+}
+.discovery-item:hover { border-color:rgba(232,162,76,0.25); }
+.discovery-item .di-label {
+  font-size:0.38rem; letter-spacing:0.1em; color:rgba(232,162,76,0.5);
+  text-transform:uppercase; margin-bottom:3px;
+}
+.discovery-item .di-text {
+  font-family:'Cormorant Garamond',serif; font-style:italic;
+  font-size:0.74rem; color:rgba(255,255,255,0.55); line-height:1.65;
+}
+
+/* ── RTD memory field ─────────────────────────────────────────────── */
+#rtd-canvas {
+  width:100%; height:110px; display:block;
+  border-radius:3px; border:1px solid rgba(255,255,255,0.04);
+  margin-bottom:10px;
+}
+
+/* ── Schumann readout ─────────────────────────────────────────────── */
+.schumann-row {
+  font-size:0.38rem; letter-spacing:0.08em;
+  color:rgba(255,255,255,0.2); display:flex;
+  justify-content:space-between; line-height:2.0;
+}
+.schumann-row span { color:rgba(76,224,201,0.5); }
+
+/* ── Thinking indicator ───────────────────────────────────────────── */
+.thinking {
+  display:flex; gap:4px; align-items:center; padding:10px 0;
+}
+.thinking-dot {
+  width:5px; height:5px; border-radius:50%;
+  background:rgba(76,224,201,0.4);
+  animation: think-bounce 1.2s ease-in-out infinite;
+}
+.thinking-dot:nth-child(2){ animation-delay:0.2s; }
+.thinking-dot:nth-child(3){ animation-delay:0.4s; }
+@keyframes think-bounce {
+  0%,100%{ transform:translateY(0); opacity:0.4; }
+  50%    { transform:translateY(-5px); opacity:1; }
+}
+
+/* ── File drag zone ───────────────────────────────────────────────── */
+#drop-zone {
+  border: 1px dashed rgba(255,255,255,0.08);
+  border-radius:4px; padding:14px;
+  text-align:center; cursor:pointer; transition:all 0.3s;
+  font-size:0.42rem; letter-spacing:0.1em;
+  color:rgba(255,255,255,0.2);
+}
+#drop-zone:hover, #drop-zone.drag-over {
+  border-color:rgba(76,224,201,0.3); color:rgba(76,224,201,0.5);
+  background:rgba(76,224,201,0.03);
+}
+#drop-zone input { display:none; }
+
+/* ── Grain ────────────────────────────────────────────────────────── */
+#grain {
+  position:fixed; inset:0; z-index:99;
+  pointer-events:none; opacity:0.020;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:200px;
+}
+
+@media(max-width:900px) {
+  #app { grid-template-columns: 1fr; }
+  #sources-panel, #rtd-panel { display:none; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+<canvas id="tw-canvas"></canvas>
+<div id="grain"></div>
+
+<div id="app">
+
+  <!-- ── HEADER ──────────────────────────────────────────────────── -->
+  <header>
+    <h1>TurtleWalker</h1>
+    <span class="tagline">Office Companion · v0.1 — the first clearing</span>
+    <div id="walker-status">
+      <div id="walker-dot"></div>
+      <span id="walker-label">Ready</span>
+    </div>
+  </header>
+
+  <!-- ── LEFT — SOURCES ──────────────────────────────────────────── -->
+  <aside id="sources-panel">
+
+    <div class="panel">
+      <div class="panel-title">Current Project</div>
+      <div class="project-chip" onclick="setProject('Q2 Financial Report')">
+        📁 Q2 Financial Report
+      </div>
+      <div class="project-chip" onclick="setProject('Vendor Audit 2026')">
+        📁 Vendor Audit 2026
+      </div>
+      <div id="add-project" class="project-chip" style="color:rgba(255,255,255,0.2);border-style:dashed;" onclick="addProject()">
+        + New Project
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Connected Sources</div>
+
+      <div class="source-item connected" id="src-excel">
+        <div class="source-dot ok"></div>
+        <div>
+          <div class="source-name">Excel</div>
+          <div class="source-sub">3 workbooks loaded</div>
+        </div>
+      </div>
+      <div class="source-item connected" id="src-word">
+        <div class="source-dot ok"></div>
+        <div>
+          <div class="source-name">Word</div>
+          <div class="source-sub">5 documents indexed</div>
+        </div>
+      </div>
+      <div class="source-item" id="src-outlook" onclick="connectSource('outlook')">
+        <div class="source-dot idle"></div>
+        <div>
+          <div class="source-name">Outlook</div>
+          <div class="source-sub">Click to connect</div>
+        </div>
+      </div>
+      <div class="source-item connected" id="src-files">
+        <div class="source-dot watching"></div>
+        <div>
+          <div class="source-name">Local Files</div>
+          <div class="source-sub">Watching 2 folders</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Drop File</div>
+      <div id="drop-zone" onclick="document.getElementById('file-input').click()"
+           ondragover="e=>e.preventDefault()" ondrop="handleFileDrop(event)">
+        <input type="file" id="file-input" multiple accept=".xlsx,.xls,.docx,.doc,.pdf,.txt,.csv"
+               onchange="handleFileSelect(this.files)">
+        Drop file or click<br>
+        <span style="color:rgba(255,255,255,0.12)">xlsx · docx · pdf · csv</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Schumann Field</div>
+      <div class="schumann-row">Frequency <span id="sch-freq">7.83 Hz</span></div>
+      <div class="schumann-row">Amplitude  <span id="sch-amp">1.00</span></div>
+      <div class="schumann-row">Quality    <span id="sch-q">4.50</span></div>
+      <div class="schumann-row">Walker sync <span id="sch-sync" style="color:var(--gold)">Engaged</span></div>
+    </div>
+
+  </aside><!-- /sources-panel -->
+
+  <!-- ── MAIN — CHAT ─────────────────────────────────────────────── -->
+  <main id="main">
+
+    <div id="chat-scroll">
+
+      <!-- Welcome messages from all three layers -->
+      <div class="msg">
+        <div class="msg-avatar secretary">S</div>
+        <div>
+          <div class="msg-sender">Secretary · Czarina</div>
+          <div class="msg-bubble secretary">
+            Good evening. I've loaded the Q2 Financial Report workspace.
+            Three Excel workbooks and five Word documents are indexed.
+            <br><br>
+            TurtleWalker is standing by — what would you like to explore?
+          </div>
+        </div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-avatar walker">🐢</div>
+        <div>
+          <div class="msg-sender">TurtleWalker</div>
+          <div class="msg-bubble walker">
+            Initial walk complete. Found connections across 3 files.
+            <br><br>
+            <span class="discovery-tag tag-anomaly">Anomaly</span> Missing invoice records in Q2_expenses.xlsx<br>
+            <span class="discovery-tag tag-anomaly">Anomaly</span> Duplicate vendor entry: Meridian Supplies<br>
+            <span class="discovery-tag tag-draft">Draft</span> Unlinked report draft in Documents\Q2_draft.docx
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /chat-scroll -->
+
+    <div id="input-area">
+      <textarea id="chat-input" rows="1" placeholder="Ask Secretary… or open a file…"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
+        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+      <button id="send-btn" onclick="sendMessage()">↵ Send</button>
+    </div>
+
+  </main><!-- /main -->
+
+  <!-- ── RIGHT — WALKER + RTD ────────────────────────────────────── -->
+  <aside id="rtd-panel">
+
+    <div class="panel">
+      <div class="panel-title">Walker Status</div>
+      <div class="walker-card">
+        <div class="wc-label">Mode</div>
+        <div class="wc-val" id="wc-mode">Standing by</div>
+      </div>
+      <div class="walker-card">
+        <div class="wc-label">Current Path</div>
+        <div class="wc-val" id="wc-path">—</div>
+        <div class="wc-trail" id="wc-trail"></div>
+      </div>
+      <div class="walker-card">
+        <div class="wc-label">Steps taken</div>
+        <div class="wc-val" id="wc-steps">0</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">RTD Memory Field</div>
+      <canvas id="rtd-canvas" width="260" height="110"></canvas>
+      <div class="schumann-row">Nodes <span id="rtd-nodes">0</span></div>
+      <div class="schumann-row">Connections <span id="rtd-links">0</span></div>
+      <div class="schumann-row">Coherence <span id="rtd-coh">0.000</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Recent Discoveries</div>
+      <div id="discoveries-list">
+        <div class="discovery-item" onclick="exploreDiscovery('Missing invoice records')">
+          <div class="di-label">Anomaly · Excel</div>
+          <div class="di-text">Missing invoice records in Q2 expenses sheet rows 47–52</div>
+        </div>
+        <div class="discovery-item" onclick="exploreDiscovery('Duplicate vendor entry')">
+          <div class="di-label">Anomaly · Data</div>
+          <div class="di-text">Duplicate vendor: Meridian Supplies appears twice with different codes</div>
+        </div>
+        <div class="discovery-item" onclick="exploreDiscovery('Draft report available')">
+          <div class="di-label">Draft · Word</div>
+          <div class="di-text">Q2_draft.docx not linked to any project — created 3 days ago</div>
+        </div>
+      </div>
+    </div>
+
+  </aside><!-- /rtd-panel -->
+
+</div><!-- /app -->
+
+<script>
+// ════════════════════════════════════════════════════════════════════════
+// TURTLEWALKER OFFICE COMPANION — v0.1
+// Secretary Avatar (Czarina) + TurtleWalker + RTD Memory Field
+// Nefertari field canvas · Schumann simulation · Gateway bridge
+// ════════════════════════════════════════════════════════════════════════
+
+const PHI         = 1.6180339887;
+const TAU         = Math.PI * 2;
+const GATEWAY_URL = 'http://localhost:8444';
+
+// ════════════════════════════════════════════════════════════════════════
+// TURTLEWALKER — the behavior (not a data structure)
+// Question → Walk → Discover → Connect → Return
+// ════════════════════════════════════════════════════════════════════════
+
+class TurtleWalkerBehavior {
+  constructor() {
+    this.mode       = 'standing_by';
+    this.steps      = 0;
+    this.currentPath= '—';
+    this.trail      = [];
+    this.discoveries= [];
+    this.rtdNodes   = [];
+    this.rtdLinks   = [];
+    this._walkTimer = null;
+  }
+
+  // Start a walk from a question
+  async walk(question, sources) {
+    this.mode  = 'walking';
+    this.steps = 0;
+    this.trail = [];
+    setWalkerDot('walking');
+    setWalkerLabel('Walking…');
+
+    // Walk sequence: source → pattern → connection → return
+    const walkSteps = this._planWalk(question, sources);
+    for (const step of walkSteps) {
+      await this._step(step);
+    }
+
+    this.mode = 'returning';
+    setWalkerDot('ok');
+    setWalkerLabel('Returning');
+    await sleep(600);
+
+    this.mode = 'ready';
+    setWalkerDot('');
+    setWalkerLabel('Ready');
+    updateWalkerHUD(this);
+    return this.discoveries;
+  }
+
+  _planWalk(question, sources) {
+    const q = question.toLowerCase();
+    const steps = [];
+
+    if (q.includes('excel') || q.includes('xlsx') || q.includes('formula') ||
+        q.includes('chart') || q.includes('anomaly') || q.includes('invoice')) {
+      steps.push({ type:'source', label:'Excel workbooks', icon:'📊' });
+      steps.push({ type:'pattern', label:'Formula audit', icon:'🔍' });
+      steps.push({ type:'connect', label:'Cross-sheet links', icon:'🔗' });
+    }
+    if (q.includes('word') || q.includes('draft') || q.includes('report') ||
+        q.includes('document') || q.includes('letter') || q.includes('summary')) {
+      steps.push({ type:'source', label:'Word documents', icon:'📄' });
+      steps.push({ type:'pattern', label:'Content scan', icon:'🔍' });
+    }
+    if (q.includes('email') || q.includes('outlook') || q.includes('follow')) {
+      steps.push({ type:'source', label:'Outlook mailbox', icon:'📧' });
+      steps.push({ type:'pattern', label:'Thread analysis', icon:'🔍' });
+    }
+    if (q.includes('file') || q.includes('folder') || q.includes('related') ||
+        q.includes('find') || q.includes('where')) {
+      steps.push({ type:'source', label:'File system', icon:'📁' });
+      steps.push({ type:'connect', label:'Related docs', icon:'🔗' });
+    }
+    if (steps.length === 0) {
+      // General walk
+      steps.push({ type:'source', label:'All sources', icon:'🌐' });
+      steps.push({ type:'pattern', label:'Pattern scan', icon:'🔍' });
+      steps.push({ type:'connect', label:'Connections', icon:'🔗' });
+    }
+    return steps;
+  }
+
+  async _step(step) {
+    this.steps++;
+    this.currentPath = `${step.icon} ${step.label}`;
+    this.trail.unshift(`${step.icon} ${step.label}`);
+    if (this.trail.length > 4) this.trail.pop();
+    updateWalkerHUD(this);
+    await sleep(400 + Math.random() * 300);
+  }
+
+  // Generate response from a question (simple pattern matching for v0.1)
+  generateResponse(question) {
+    const q = question.toLowerCase();
+    const responses = [];
+
+    // Secretary layer — acknowledgment
+    let secretaryLine = `I'm on it.`;
+    if (q.includes('open') || q.includes('load')) secretaryLine = `Loading that now — one moment.`;
+    else if (q.includes('find')) secretaryLine = `Searching across your connected sources.`;
+    else if (q.includes('formula') || q.includes('build')) secretaryLine = `Let me build that formula.`;
+    else if (q.includes('draft') || q.includes('write')) secretaryLine = `Drafting that for you.`;
+    else if (q.includes('anomaly') || q.includes('unusual') || q.includes('strange')) secretaryLine = `TurtleWalker is already looking.`;
+    responses.push({ layer:'secretary', text: secretaryLine });
+
+    // TurtleWalker layer — discoveries
+    const discoveries = [];
+    if (q.includes('invoice') || q.includes('expense') || q.includes('excel')) {
+      discoveries.push({ type:'anomaly', text:'Rows 47–52 in Q2_expenses.xlsx are missing invoice reference numbers' });
+      discoveries.push({ type:'related', text:'Invoice log in vendor_master.xlsx may contain the missing entries' });
+    }
+    if (q.includes('vendor') || q.includes('supplier') || q.includes('duplicate')) {
+      discoveries.push({ type:'anomaly', text:'Meridian Supplies appears as both vendor #1042 and #1042B — likely duplicate' });
+      discoveries.push({ type:'missing', text:'No PO record found for vendor #1042B in the past 6 months' });
+    }
+    if (q.includes('report') || q.includes('draft') || q.includes('summary')) {
+      discoveries.push({ type:'draft', text:'Q2_draft.docx (Word) contains an unlinked summary — last edited 3 days ago' });
+      discoveries.push({ type:'related', text:'Q1_final.docx contains a template structure that may apply' });
+    }
+    if (q.includes('formula') || q.includes('sum') || q.includes('total')) {
+      discoveries.push({ type:'related', text:'Column G row 2 would be: =SUMIF(A:A, "Approved", F:F) for approved totals' });
+      discoveries.push({ type:'anomaly', text:'Column D contains mixed text/number values — formula may need ISNUMBER check' });
+    }
+    if (q.includes('chart') || q.includes('visual') || q.includes('graph')) {
+      discoveries.push({ type:'related', text:'Monthly totals in rows 3–14 suitable for a line chart with trend line' });
+    }
+    if (discoveries.length === 0) {
+      discoveries.push({ type:'related', text:`Walked across ${Math.floor(Math.random()*4)+2} sources — no critical anomalies found` });
+      discoveries.push({ type:'related', text:'All indexed files appear consistent with project expectations' });
+    }
+
+    responses.push({ layer:'walker', discoveries });
+
+    // RTD layer — connections (only surfaces when meaningful)
+    if (q.includes('connect') || q.includes('related') || q.includes('link') ||
+        discoveries.filter(d=>d.type==='related').length >= 2) {
+      responses.push({
+        layer:'rtd',
+        text: `${Math.floor(Math.random()*3)+2} new connections mapped in the memory field.`
+              + ` Relationship density: +${(Math.random()*0.15+0.05).toFixed(2)}.`
+      });
+    }
+
+    return responses;
+  }
+
+  addDiscovery(d) {
+    this.discoveries.unshift(d);
+    if (this.discoveries.length > 20) this.discoveries.pop();
+    // Add RTD node
+    this.rtdNodes.push({
+      x: Math.random(), y: Math.random(),
+      type: d.type, label: d.text.slice(0,24),
+      t: Date.now(),
+    });
+    if (this.rtdNodes.length > 24) this.rtdNodes.shift();
+    // Add RTD link to random existing node
+    if (this.rtdNodes.length > 1) {
+      this.rtdLinks.push({
+        a: this.rtdNodes.length - 1,
+        b: Math.floor(Math.random() * (this.rtdNodes.length - 1)),
+        strength: Math.random(),
+      });
+      if (this.rtdLinks.length > 32) this.rtdLinks.shift();
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SECRETARY AVATAR — Czarina
+// ════════════════════════════════════════════════════════════════════════
+
+const SECRETARY_VOICES = {
+  acknowledgment: [
+    "Understood. Working on that now.",
+    "On it. TurtleWalker is exploring.",
+    "I've routed that to the walker.",
+    "Processing — I'll have results shortly.",
+  ],
+  discovery: [
+    "The walker found something worth noting.",
+    "TurtleWalker returned with these connections.",
+    "Discoveries logged to the memory field.",
+  ],
+  greeting: [
+    "Good to see you. What shall we explore?",
+    "The workspace is ready. Ask me anything.",
+    "Files loaded and indexed. What do you need?",
+  ],
+};
+
+function secretarySpeak(type) {
+  const bank = SECRETARY_VOICES[type] || SECRETARY_VOICES.acknowledgment;
+  return bank[Math.floor(Math.random() * bank.length)];
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// NEFERTARI FIELD CANVAS — TurtleWalker.tsx visual layer
+// Flower of Life + Red Swan Kuir + Schumann pulse
+// ════════════════════════════════════════════════════════════════════════
+
+const twCvs  = document.getElementById('tw-canvas');
+const twCtx  = twCvs.getContext('2d');
+let twT      = 0;
+let schumann = { freq: 7.83, amp: 1.0, quality: 4.5 };
+
+function resizeTW() {
+  twCvs.width  = window.innerWidth;
+  twCvs.height = window.innerHeight;
+}
+resizeTW();
+window.addEventListener('resize', resizeTW);
+
+function drawFlowerOfLife(ctx, cx, cy, r) {
+  ctx.lineWidth   = 0.7;
+  ctx.strokeStyle = 'rgba(147,51,234,0.18)';
+  const drawCircle = (x, y, rad) => {
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.stroke();
+  };
+  drawCircle(cx, cy, r);
+  for (let ring = 1; ring <= 2; ring++) {
+    const count = ring * 6;
+    for (let i = 0; i < count; i++) {
+      const a = (i/count)*TAU;
+      drawCircle(cx + Math.cos(a)*r*ring, cy + Math.sin(a)*r*ring, r);
+    }
+  }
+}
+
+function drawRedSwanKuir(ctx, cx, cy, t, intensity) {
+  const segments = 36, layers = 5;
+  ctx.lineWidth   = 1.4;
+  ctx.strokeStyle = 'rgba(244,63,94,0.32)';
+  const pts = [];
+  for (let layer = 0; layer < layers; layer++) {
+    for (let i = 0; i < segments; i++) {
+      const a     = (i/segments)*TAU;
+      const swell = Math.sin(a*3 + t*1.8) * intensity * 0.2;
+      const r     = 80 + layer*42 + swell*28;
+      pts.push({
+        x: Math.cos(a)*r + Math.sin(a*2)*10,
+        y: Math.sin(a)*r*0.72 - layer*8,
+      });
+    }
+  }
+  for (let i = 0; i < pts.length-1; i+=2) {
+    const p0 = pts[i], p1 = pts[i+1], p2 = pts[(i+3)%pts.length];
+    ctx.beginPath();
+    ctx.moveTo(cx+p0.x, cy+p0.y);
+    ctx.quadraticCurveTo(cx+p1.x*0.6, cy+p1.y*0.8, cx+p2.x, cy+p2.y);
+    ctx.stroke();
+  }
+}
+
+function drawNefertariField() {
+  twT += 0.008;
+  const W = twCvs.width, H = twCvs.height;
+  const cx = W*0.5, cy = H*0.5;
+
+  twCtx.clearRect(0,0,W,H);
+
+  const schPulse = Math.sin(twT * schumann.freq * 0.4) * schumann.amp * 0.5 + 0.5;
+  const baseR    = Math.min(W,H) * 0.09;
+  const br       = baseR + schPulse * baseR * 0.25;
+
+  // Flower of Life (slightly rotated)
+  twCtx.save();
+  twCtx.translate(cx,cy);
+  twCtx.rotate(schPulse * 0.15);
+  twCtx.translate(-cx,-cy);
+  drawFlowerOfLife(twCtx, cx, cy, br);
+  twCtx.restore();
+
+  // Membrane halo
+  twCtx.beginPath();
+  twCtx.arc(cx, cy, br*1.55, 0, TAU);
+  twCtx.strokeStyle = `rgba(147,51,234,${0.12 + schPulse*0.1})`;
+  twCtx.lineWidth   = 2;
+  twCtx.stroke();
+
+  // Red Swan Kuir
+  drawRedSwanKuir(twCtx, cx, cy, twT, schumann.amp);
+
+  // Nymph particles
+  for (let i = 0; i < 22; i++) {
+    const angle  = (i/22)*TAU + twT * 0.15;
+    const radius = br * 1.75 + Math.sin(twT*0.6+i)*br*0.25 + schPulse*br*0.35;
+    const x = cx + Math.cos(angle)*radius;
+    const y = cy + Math.sin(angle)*radius;
+    twCtx.beginPath();
+    twCtx.arc(x, y, 1.8, 0, TAU);
+    twCtx.fillStyle = `rgba(244,244,245,${0.18 + schPulse*0.22})`;
+    twCtx.fill();
+  }
+
+  requestAnimationFrame(drawNefertariField);
+}
+drawNefertariField();
+
+// Schumann simulation
+setInterval(() => {
+  const base = 7.83 + Math.sin(Date.now()/3_600_000)*0.28;
+  schumann = {
+    freq:    base,
+    amp:     0.72 + Math.random()*0.58,
+    quality: 3.8  + Math.random()*2.0,
+  };
+  document.getElementById('sch-freq').textContent = `${schumann.freq.toFixed(2)} Hz`;
+  document.getElementById('sch-amp').textContent  = schumann.amp.toFixed(2);
+  document.getElementById('sch-q').textContent    = schumann.quality.toFixed(2);
+}, 4500);
+
+// ════════════════════════════════════════════════════════════════════════
+// RTD MEMORY FIELD CANVAS — relationship topology mini-map
+// ════════════════════════════════════════════════════════════════════════
+
+const rtdCvs = document.getElementById('rtd-canvas');
+const rtdCtx  = rtdCvs.getContext('2d');
+let rtdT      = 0;
+
+function drawRTD() {
+  rtdT += 0.012;
+  const W = 260, H = 110;
+  rtdCtx.clearRect(0,0,W,H);
+
+  const nodes = walker.rtdNodes;
+  const links = walker.rtdLinks;
+
+  // Background pulse
+  const pulse = Math.sin(rtdT * PHI * 0.5) * 0.5 + 0.5;
+  const bg = rtdCtx.createRadialGradient(W/2,H/2,0,W/2,H/2,70);
+  bg.addColorStop(0, `rgba(76,224,201,${0.025 + pulse*0.02})`);
+  bg.addColorStop(1, 'rgba(0,0,0,0)');
+  rtdCtx.fillStyle = bg; rtdCtx.fillRect(0,0,W,H);
+
+  // Links
+  links.forEach(link => {
+    const a = nodes[link.a], b = nodes[link.b];
+    if (!a||!b) return;
+    const isOrange = a.type==='anomaly'||b.type==='anomaly';
+    const alpha    = link.strength * 0.35 * (0.5 + pulse*0.5);
+    rtdCtx.beginPath();
+    rtdCtx.moveTo(a.x*W, a.y*H);
+    rtdCtx.lineTo(b.x*W, b.y*H);
+    // Orange filament for anomalies — the RTD divergence indicator
+    rtdCtx.strokeStyle = isOrange
+      ? `rgba(232,162,76,${alpha})`
+      : `rgba(76,224,201,${alpha * 0.6})`;
+    rtdCtx.lineWidth = isOrange ? 1.2 : 0.7;
+    rtdCtx.stroke();
+  });
+
+  // Nodes
+  const TYPE_COLOR = {
+    anomaly: [232,162,76], related:[76,224,201],
+    missing:[232,122,154], draft:[154,122,232],
+  };
+  nodes.forEach((node, i) => {
+    const col = TYPE_COLOR[node.type] || [200,200,220];
+    const age = Math.min(1, (Date.now() - node.t) / 3000);
+    const r   = 3.5 * age;
+    const a   = 0.5 + pulse*0.3;
+    rtdCtx.beginPath();
+    rtdCtx.arc(node.x*W, node.y*H, r, 0, TAU);
+    rtdCtx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${a})`;
+    rtdCtx.fill();
+  });
+
+  document.getElementById('rtd-nodes').textContent = nodes.length;
+  document.getElementById('rtd-links').textContent = links.length;
+  const coh = nodes.length > 0 ? Math.min(0.98, nodes.length / 24 * PHI).toFixed(3) : '0.000';
+  document.getElementById('rtd-coh').textContent  = coh;
+
+  requestAnimationFrame(drawRTD);
+}
+drawRTD();
+
+// ════════════════════════════════════════════════════════════════════════
+// STARS
+// ════════════════════════════════════════════════════════════════════════
+
+const starCvs = document.getElementById('stars');
+const starCtx  = starCvs.getContext('2d');
+const STARS    = Array.from({length:180}, ()=>({
+  x:Math.random(), y:Math.random(),
+  r:Math.random()*1.0+0.2, ph:Math.random()*TAU, sp:Math.random()*0.0004+0.0001,
+  gold:Math.random()>0.9,
+}));
+let starT = 0;
+function resizeStar(){ starCvs.width=window.innerWidth; starCvs.height=window.innerHeight; }
+resizeStar();
+window.addEventListener('resize', resizeStar);
+function drawStars(){
+  starT+=0.012;
+  starCtx.clearRect(0,0,starCvs.width,starCvs.height);
+  STARS.forEach(s=>{
+    const a=(Math.sin(s.ph+starT*s.sp)*0.4+0.5)*0.4;
+    starCtx.beginPath();
+    starCtx.arc(s.x*starCvs.width,s.y*starCvs.height,s.r,0,TAU);
+    starCtx.fillStyle=s.gold?`rgba(201,168,76,${a})`:`rgba(180,220,255,${a*0.4})`;
+    starCtx.fill();
+  });
+  requestAnimationFrame(drawStars);
+}
+drawStars();
+
+// ════════════════════════════════════════════════════════════════════════
+// WALKER + HUD HELPERS
+// ════════════════════════════════════════════════════════════════════════
+
+const walker = new TurtleWalkerBehavior();
+let   currentProject = 'Q2 Financial Report';
+
+function setWalkerDot(state) {
+  const dot = document.getElementById('walker-dot');
+  dot.className = state;
+}
+function setWalkerLabel(label) {
+  document.getElementById('walker-label').textContent = label;
+}
+function updateWalkerHUD(w) {
+  document.getElementById('wc-mode').textContent  = w.mode.replace(/_/g,' ');
+  document.getElementById('wc-path').textContent  = w.currentPath;
+  document.getElementById('wc-trail').textContent = w.trail.join('\n');
+  document.getElementById('wc-steps').textContent = w.steps;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CHAT ENGINE
+// ════════════════════════════════════════════════════════════════════════
+
+const chatScroll = document.getElementById('chat-scroll');
+
+function addMsg(layer, html, extras) {
+  const div = document.createElement('div');
+  div.className = `msg ${layer === 'user' ? 'user' : ''}`;
+
+  const avatarLabel = layer==='secretary'?'S':layer==='walker'?'🐢':layer==='rtd'?'◈':'U';
+  const avatarClass = layer==='user'?'user-av':layer;
+
+  div.innerHTML = `
+    <div class="msg-avatar ${avatarClass}">${avatarLabel}</div>
+    <div>
+      <div class="msg-sender">${
+        layer==='secretary'?'Secretary · Czarina':
+        layer==='walker'   ?'TurtleWalker':
+        layer==='rtd'      ?'RTD Memory Field':'You'
+      }</div>
+      <div class="msg-bubble ${layer==='user'?'user-msg':layer}">${html}</div>
+    </div>`;
+  chatScroll.appendChild(div);
+  chatScroll.scrollTop = chatScroll.scrollHeight;
+}
+
+function addThinking() {
+  const div = document.createElement('div');
+  div.className = 'msg'; div.id = 'thinking-msg';
+  div.innerHTML = `
+    <div class="msg-avatar walker">🐢</div>
+    <div class="thinking">
+      <div class="thinking-dot"></div>
+      <div class="thinking-dot"></div>
+      <div class="thinking-dot"></div>
+    </div>`;
+  chatScroll.appendChild(div);
+  chatScroll.scrollTop = chatScroll.scrollHeight;
+  return div;
+}
+function removeThinking() {
+  const el = document.getElementById('thinking-msg');
+  if (el) el.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  // User message
+  addMsg('user', text);
+
+  // Secretary immediate acknowledgment
+  addMsg('secretary', secretarySpeak('acknowledgment'));
+
+  // Thinking
+  const thinking = addThinking();
+
+  // Walk
+  const responses = walker.generateResponse(text);
+  await walker.walk(text, ['excel','word','files']);
+
+  removeThinking();
+
+  // Walker discoveries
+  const walkerResp = responses.find(r=>r.layer==='walker');
+  if (walkerResp?.discoveries?.length) {
+    let html = 'Walk complete. Found the following:<br><br>';
+    walkerResp.discoveries.forEach(d => {
+      html += `<span class="discovery-tag tag-${d.type}">${d.type}</span> ${d.text}<br>`;
+      walker.addDiscovery(d);
+    });
+    addMsg('walker', html);
+    updateDiscoveriesPanel();
+  }
+
+  // RTD response (if surfaced)
+  const rtdResp = responses.find(r=>r.layer==='rtd');
+  if (rtdResp) {
+    addMsg('rtd', rtdResp.text);
+  }
+
+  // Push to gateway
+  pushToGateway(text, responses);
+}
+
+function updateDiscoveriesPanel() {
+  const el = document.getElementById('discoveries-list');
+  const recent = walker.discoveries.slice(0,5);
+  if (!recent.length) return;
+  const TYPE_LABEL = { anomaly:'Anomaly', related:'Related', missing:'Missing', draft:'Draft' };
+  const TYPE_SOURCE = { anomaly:'Excel / Data', related:'Files', missing:'Data', draft:'Word' };
+  el.innerHTML = recent.map(d => `
+    <div class="discovery-item" onclick="exploreDiscovery('${d.text.slice(0,30).replace(/'/g,"\\'")}')">
+      <div class="di-label">${TYPE_LABEL[d.type]||d.type} · ${TYPE_SOURCE[d.type]||'Files'}</div>
+      <div class="di-text">${d.text}</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ACTIONS
+// ════════════════════════════════════════════════════════════════════════
+
+function exploreDiscovery(text) {
+  document.getElementById('chat-input').value = `Tell me more about: ${text}`;
+  document.getElementById('chat-input').focus();
+}
+
+function setProject(name) {
+  currentProject = name;
+  addMsg('secretary', `Project set to <em>${name}</em>. Re-indexing connected sources…`);
+  setTimeout(()=>{ addMsg('walker', `Walk initiated across ${name} files. Standing by for your first question.`); }, 1200);
+}
+
+function addProject() {
+  const name = prompt('New project name:');
+  if (!name) return;
+  setProject(name);
+}
+
+function connectSource(type) {
+  const el = document.getElementById(`src-${type}`);
+  if (!el) return;
+  el.querySelector('.source-dot').className = 'source-dot watching';
+  el.querySelector('.source-name').style.color = 'rgba(76,224,201,0.7)';
+  el.querySelector('.source-sub').textContent = 'Connecting…';
+  addMsg('secretary', `Connecting to ${type}… I'll let you know when it's ready.`);
+  setTimeout(()=>{
+    el.querySelector('.source-dot').className = 'source-dot ok';
+    el.querySelector('.source-sub').textContent = 'Connected';
+    el.classList.add('connected');
+    addMsg('secretary', `${type.charAt(0).toUpperCase()+type.slice(1)} connected. TurtleWalker will begin indexing.`);
+  }, 2200);
+}
+
+function handleFileDrop(e) {
+  e.preventDefault();
+  const files = e.dataTransfer.files;
+  handleFileSelect(files);
+}
+
+function handleFileSelect(files) {
+  Array.from(files).forEach(f => {
+    addMsg('secretary', `Loading <em>${f.name}</em> (${(f.size/1024).toFixed(1)} KB)…`);
+    setTimeout(()=>{
+      addMsg('walker', `File indexed: <em>${f.name}</em> — beginning pattern walk.`);
+      const d = { type:'related', text:`${f.name} linked to project ${currentProject}` };
+      walker.addDiscovery(d);
+    }, 1400);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// GATEWAY BRIDGE
+// ════════════════════════════════════════════════════════════════════════
+
+function pushToGateway(question, responses) {
+  const discoveries = responses.find(r=>r.layer==='walker')?.discoveries || [];
+  fetch(`${GATEWAY_URL}/ingest`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      scene:         'TurtleWalker · Office Companion',
+      symbolic_state:'Walker · ' + (discoveries[0]?.type||'exploring'),
+      coherence:     Math.min(0.95, 0.65 + walker.steps * 0.02),
+      entropy:       discoveries.filter(d=>d.type==='anomaly').length * 0.15,
+      dendroid_pulse:'V',
+    }),
+    signal: AbortSignal.timeout(800),
+  }).catch(()=>{});
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ════════════════════════════════════════════════════════════════════════
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ════════════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════════════
+
+// Seed a few RTD nodes on startup
+const SEED_DISCOVERIES = [
+  { type:'anomaly', text:'Missing invoice records rows 47–52', t: Date.now()-5000 },
+  { type:'anomaly', text:'Duplicate vendor: Meridian Supplies',  t: Date.now()-4000 },
+  { type:'draft',   text:'Q2_draft.docx unlinked to project',    t: Date.now()-3000 },
+];
+SEED_DISCOVERIES.forEach(d => walker.addDiscovery(d));
+updateWalkerHUD(walker);
+</script>
+</body>
+</html>

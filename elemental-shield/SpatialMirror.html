@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spatial Mirror Frame — Adaptive Co-Regulatory Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Share+Tech+Mono&display=swap">
+
+<style>
+/* ════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — exact Sanctuary palette
+   ════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Sanctuary tokens */
+  --void:   #00030a; --deep:   #020810;
+  --gold:   #c9a84c; --amber:  #e8c97a; --light:  #f5e4a8;
+  --teal:   #4ce0c9; --sky:    #7ee8f5; --soft:   #b8f4ef;
+  --rose:   #e87a9a; --violet: #9a7ae8;
+  --moss:   #57c685; --ocean:  #0694b7;
+  --elixira:#82c8ff; --miraelle:#e0aaff; --nymph: #ffb347;
+  --panel-border: rgba(255,255,255,0.05);
+  --panel-bg:     rgba(255,255,255,0.018);
+
+  /* ── Spring-damper physics CSS interface ───────────────────────── */
+  /* These are the live handles the AdaptiveSpatialWrapper writes to  */
+  --breath-duration:    8s;
+  --frame-blur:         10px;
+  --frame-padding:      2rem;
+  --frame-bg:           rgba(2, 8, 16, 0.45);
+  --node-scale-min:     0.98;
+  --node-scale-max:     1.02;
+  --node-bright-min:    0.90;
+  --node-bright-max:    1.05;
+  --transition-speed:   2.5s;
+  --insulation-ring:    0px;    /* grows in GROUNDING mode */
+  --grounding-vignette: 0;      /* 0→1 opacity of protective vignette */
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--void);
+  color: rgba(255,255,255,0.82);
+  font-family: 'Cormorant Garamond', serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Starfield ─────────────────────────────────────────────────── */
+#star-bg { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+/* ── Protective vignette — grows in GROUNDING ────────────────────── */
+#vignette {
+  position: fixed; inset: 0; z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 80% 80% at 50% 50%,
+    transparent 40%,
+    rgba(0, 3, 10, 0.92) 100%
+  );
+  opacity: var(--grounding-vignette);
+  transition: opacity var(--transition-speed) ease-in-out;
+}
+
+/* ── App shell ────────────────────────────────────────────────────── */
+#app {
+  position: relative; z-index: 2;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 24px 48px;
+}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+header {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+header h1 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  text-shadow: 0 0 20px rgba(201,168,76,0.35);
+  flex-shrink: 0;
+}
+header .subtitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.32);
+  letter-spacing: 0.05em;
+}
+#state-badge {
+  margin-left: auto;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.42rem;
+  letter-spacing: 0.14em;
+  padding: 5px 12px;
+  border-radius: 2px;
+  border: 1px solid rgba(76,224,201,0.25);
+  color: rgba(76,224,201,0.7);
+  background: rgba(76,224,201,0.04);
+  transition: all var(--transition-speed) ease-in-out;
+}
+#state-badge.grounding {
+  border-color: rgba(154,122,232,0.35);
+  color: rgba(154,122,232,0.8);
+  background: rgba(154,122,232,0.06);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   SPATIAL MIRROR FRAME — the adaptive co-regulatory wrapper
+   Physics properties are read from CSS custom properties.
+   State is communicated via data-state attribute.
+   ════════════════════════════════════════════════════════════════════ */
+.spatial-mirror-frame {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  backdrop-filter: blur(var(--frame-blur));
+  -webkit-backdrop-filter: blur(var(--frame-blur));
+  padding: var(--frame-padding);
+  background: var(--frame-bg);
+  overflow: hidden;
+  /* Physics transition — backdrop-filter, padding, background all animate */
+  transition:
+    backdrop-filter     var(--transition-speed) ease-in-out,
+    -webkit-backdrop-filter var(--transition-speed) ease-in-out,
+    padding             var(--transition-speed) ease-in-out,
+    background          var(--transition-speed) ease-in-out,
+    border-color        var(--transition-speed) ease-in-out,
+    box-shadow          var(--transition-speed) ease-in-out;
+}
+
+/* Ambient state — alive, responsive, teal-tinged */
+.spatial-mirror-frame[data-state="AMBIENT"] {
+  border-color: rgba(76,224,201,0.12);
+  box-shadow:
+    0 0 60px rgba(76,224,201,0.04),
+    inset 0 0 40px rgba(76,224,201,0.02);
+}
+
+/* Grounding state — protective, weighted, violet-wrapped */
+.spatial-mirror-frame[data-state="GROUNDING"] {
+  padding: 4rem;
+  background: rgba(10, 8, 24, 0.72);
+  border-color: rgba(154,122,232,0.18);
+  box-shadow:
+    0 0 80px rgba(154,122,232,0.08),
+    0 0 160px rgba(154,122,232,0.04),
+    inset 0 0 60px rgba(10,8,24,0.5);
+}
+
+/* ── Insulation ring — the negative-space buffer in GROUNDING ────── */
+/* Grows via JS writing --insulation-ring                             */
+.spatial-mirror-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: var(--insulation-ring) solid rgba(154,122,232,0.04);
+  pointer-events: none;
+  transition: border-width var(--transition-speed) ease-in-out;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   BOND NODE GRID — the adaptive flex container
+   AdaptiveSpatialWrapper operates on .bond-node and .photo-cell
+   ════════════════════════════════════════════════════════════════════ */
+.bond-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+}
+
+/* ── Bond nodes — field state / data cells ───────────────────────── */
+.bond-node, .photo-cell {
+  /* breathing animation — speed controlled by --breath-duration */
+  animation: visualBreath var(--breath-duration) ease-in-out infinite alternate;
+  will-change: transform, filter;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  transition:
+    flex-basis        0.1s linear,   /* JS overrides this per-frame */
+    border-color      var(--transition-speed) ease-in-out,
+    background        var(--transition-speed) ease-in-out,
+    box-shadow        var(--transition-speed) ease-in-out;
+}
+
+.bond-node {
+  flex: 1 1 200px;
+  min-width: 140px;
+  min-height: 120px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  padding: 16px;
+}
+
+.photo-cell {
+  flex: 1 1 160px;
+  min-width: 110px;
+  min-height: 140px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--panel-border);
+}
+
+/* GROUNDING: nodes deepen and soften */
+.spatial-mirror-frame[data-state="GROUNDING"] .bond-node {
+  background: rgba(15, 10, 30, 0.6);
+  border-color: rgba(154,122,232,0.12);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+.spatial-mirror-frame[data-state="GROUNDING"] .photo-cell {
+  background: rgba(10, 6, 20, 0.5);
+  border-color: rgba(154,122,232,0.08);
+}
+
+/* ── The Co-regulatory Breathing Animation ──────────────────────── */
+/*    Keyframe values are fixed; duration is the physics variable.   */
+@keyframes visualBreath {
+  0% {
+    transform: scale(var(--node-scale-min));
+    filter: brightness(var(--node-bright-min)) contrast(0.95);
+  }
+  /* Natural pause at peak lung expansion */
+  40%, 60% {
+    transform: scale(var(--node-scale-max));
+    filter: brightness(var(--node-bright-max)) contrast(1.0);
+  }
+  100% {
+    transform: scale(var(--node-scale-min));
+    filter: brightness(var(--node-bright-min)) contrast(0.95);
+  }
+}
+
+/* ── Bond node content ──────────────────────────────────────────── */
+.node-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.38rem;
+  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.28);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.node-value {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.75);
+  margin-bottom: 6px;
+  letter-spacing: 0.06em;
+  transition: color var(--transition-speed) ease-in-out;
+}
+.node-sub {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.3);
+  font-style: italic;
+  line-height: 1.7;
+}
+.node-bar {
+  position: absolute;
+  bottom: 0; left: 0;
+  height: 2px;
+  background: var(--teal);
+  transition: background var(--transition-speed) ease-in-out,
+              width 0.3s ease-out;
+  border-radius: 0 1px 0 0;
+}
+.spatial-mirror-frame[data-state="GROUNDING"] .node-bar {
+  background: var(--violet);
+}
+
+/* ── Photo cells ────────────────────────────────────────────────── */
+.photo-cell-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+}
+.photo-cell canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   CONTROL STRIP — profile switcher + panic button
+   ════════════════════════════════════════════════════════════════════ */
+#control-strip {
+  width: 100%;
+  max-width: 1100px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ctrl-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.44rem;
+  letter-spacing: 0.12em;
+  padding: 9px 20px;
+  background: transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.35s;
+  text-transform: uppercase;
+}
+.ctrl-btn.ambient {
+  border: 1px solid rgba(76,224,201,0.3);
+  color: rgba(76,224,201,0.7);
+}
+.ctrl-btn.ambient:hover, .ctrl-btn.ambient.active {
+  background: rgba(76,224,201,0.08);
+  border-color: var(--teal);
+  color: var(--teal);
+  box-shadow: 0 0 16px rgba(76,224,201,0.15);
+}
+.ctrl-btn.ground {
+  border: 1px solid rgba(154,122,232,0.3);
+  color: rgba(154,122,232,0.7);
+}
+.ctrl-btn.ground:hover, .ctrl-btn.ground.active {
+  background: rgba(154,122,232,0.08);
+  border-color: var(--violet);
+  color: var(--violet);
+  box-shadow: 0 0 18px rgba(154,122,232,0.18);
+}
+
+/* ── Panic button — the floating shield ──────────────────────────── */
+#panic-btn {
+  margin-left: auto;
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  padding: 11px 22px;
+  background: rgba(154,122,232,0.08);
+  border: 1px solid rgba(154,122,232,0.35);
+  color: rgba(154,122,232,0.8);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.4s;
+  position: relative;
+  overflow: hidden;
+}
+#panic-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at center, rgba(154,122,232,0.15), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+#panic-btn:hover::before { opacity: 1; }
+#panic-btn:hover {
+  border-color: var(--violet);
+  color: var(--violet);
+  box-shadow: 0 0 24px rgba(154,122,232,0.22),
+              0 0 48px rgba(154,122,232,0.08);
+}
+#panic-btn.active {
+  background: rgba(154,122,232,0.14);
+  border-color: var(--violet);
+  color: var(--violet);
+}
+
+/* ── Physics readout ────────────────────────────────────────────── */
+#physics-readout {
+  width: 100%;
+  max-width: 1100px;
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.phys-cell {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 3px;
+  padding: 10px 14px;
+  transition: border-color var(--transition-speed) ease-in-out;
+}
+.phys-cell.grounding { border-color: rgba(154,122,232,0.15); }
+.phys-cell .phys-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.36rem;
+  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.2);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.phys-cell .phys-val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.58rem;
+  color: rgba(76,224,201,0.7);
+  transition: color var(--transition-speed) ease-in-out;
+}
+.phys-cell.grounding .phys-val { color: rgba(154,122,232,0.7); }
+.phys-cell .phys-bar {
+  height: 2px;
+  margin-top: 6px;
+  background: rgba(76,224,201,0.2);
+  border-radius: 1px;
+  position: relative;
+  overflow: hidden;
+}
+.phys-cell .phys-bar-fill {
+  height: 100%;
+  background: var(--teal);
+  border-radius: 1px;
+  transition: width 0.4s ease-out,
+              background var(--transition-speed) ease-in-out;
+}
+.phys-cell.grounding .phys-bar-fill { background: var(--violet); }
+
+/* ── Breath phase indicator ─────────────────────────────────────── */
+#breath-ring {
+  width: 100%;
+  max-width: 1100px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+#breath-canvas {
+  width: 120px; height: 120px;
+  flex-shrink: 0;
+}
+#breath-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 1.0rem;
+  color: rgba(255,255,255,0.4);
+  line-height: 1.9;
+  max-width: 340px;
+  transition: color var(--transition-speed) ease-in-out;
+}
+#breath-text.grounding { color: rgba(224,170,255,0.55); }
+#breath-phase-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.44rem;
+  letter-spacing: 0.14em;
+  color: rgba(76,224,201,0.5);
+  text-transform: uppercase;
+  margin-top: 4px;
+  transition: color var(--transition-speed) ease-in-out;
+}
+#breath-phase-label.grounding { color: rgba(154,122,232,0.6); }
+
+/* ── Gateway status line ─────────────────────────────────────────── */
+#gateway-line {
+  width: 100%;
+  max-width: 1100px;
+  margin-top: 14px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.38rem;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.18);
+  display: flex; gap: 24px; flex-wrap: wrap;
+}
+#gateway-line span { color: rgba(76,224,201,0.45); }
+
+/* ── Grain ────────────────────────────────────────────────────────── */
+#grain {
+  position: fixed; inset: 0; z-index: 3;
+  pointer-events: none; opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px;
+}
+</style>
+</head>
+<body>
+
+<canvas id="star-bg"></canvas>
+<div id="vignette"></div>
+<div id="grain"></div>
+
+<div id="app">
+
+  <!-- ── HEADER ──────────────────────────────────────────────────── -->
+  <header>
+    <h1>Spatial Mirror Frame</h1>
+    <span class="subtitle">Adaptive Co-Regulatory Engine · spring-damper physics</span>
+    <div id="state-badge">AMBIENT</div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       THE SPATIAL MIRROR FRAME
+       data-state drives CSS; AdaptiveSpatialWrapper drives physics
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="spatial-mirror-frame" id="mirror-frame" data-state="AMBIENT">
+
+    <div class="bond-grid" id="bond-grid">
+
+      <!-- Bond nodes — field state cells -->
+      <div class="bond-node" id="bn-coherence">
+        <div class="node-label">Coherence</div>
+        <div class="node-value" id="bnv-coherence">0.720</div>
+        <div class="node-sub">Field alignment · 528 Hz anchor</div>
+        <div class="node-bar" id="bnb-coherence" style="width:72%"></div>
+      </div>
+
+      <div class="bond-node" id="bn-entropy">
+        <div class="node-label">Entropy</div>
+        <div class="node-value" id="bnv-entropy">0.150</div>
+        <div class="node-sub">Residue dissolution rate</div>
+        <div class="node-bar" id="bnb-entropy" style="width:15%"></div>
+      </div>
+
+      <div class="bond-node" id="bn-carrier">
+        <div class="node-label">Carrier Hz</div>
+        <div class="node-value" id="bnv-carrier">528.00</div>
+        <div class="node-sub">TransductionLayer frequency</div>
+        <div class="node-bar" id="bnb-carrier" style="width:65%"></div>
+      </div>
+
+      <div class="bond-node" id="bn-aetherix">
+        <div class="node-label">Aetherix Form</div>
+        <div class="node-value" id="bnv-aetherix">seed</div>
+        <div class="node-sub">Luminosity · 0.000</div>
+        <div class="node-bar" id="bnb-aetherix" style="width:0%"></div>
+      </div>
+
+      <div class="bond-node" id="bn-dendroid">
+        <div class="node-label">Dendroid Pulse</div>
+        <div class="node-value" id="bnv-dendroid">D</div>
+        <div class="node-sub">Healing cycle · 528 Hz binaural</div>
+        <div class="node-bar" id="bnb-dendroid" style="width:50%"></div>
+      </div>
+
+      <div class="bond-node" id="bn-shadow">
+        <div class="node-label">Shadow Mesh</div>
+        <div class="node-value" id="bnv-shadow">0.000</div>
+        <div class="node-sub">BLE resonance · <span id="bn-shadow-count">0</span> shadows</div>
+        <div class="node-bar" id="bnb-shadow" style="width:0%"></div>
+      </div>
+
+      <!-- Photo cells — visual presence windows -->
+      <div class="photo-cell" id="pc-czarina">
+        <div class="photo-cell-inner">
+          <canvas id="pc-czarina-cvs" width="140" height="90"></canvas>
+          <div class="node-label" style="margin:0;text-align:center">Czarina · 528 Hz</div>
+        </div>
+      </div>
+
+      <div class="photo-cell" id="pc-freya">
+        <div class="photo-cell-inner">
+          <canvas id="pc-freya-cvs" width="140" height="90"></canvas>
+          <div class="node-label" style="margin:0;text-align:center">Freya · 741 Hz</div>
+        </div>
+      </div>
+
+      <div class="photo-cell" id="pc-kiraelle">
+        <div class="photo-cell-inner">
+          <canvas id="pc-kiraelle-cvs" width="140" height="90"></canvas>
+          <div class="node-label" style="margin:0;text-align:center">Kiraelle · 963 Hz</div>
+        </div>
+      </div>
+
+    </div><!-- /bond-grid -->
+
+  </div><!-- /spatial-mirror-frame -->
+
+  <!-- ── CONTROLS ────────────────────────────────────────────────── -->
+  <div id="control-strip">
+    <button class="ctrl-btn ambient active" id="btn-ambient" onclick="activateProfile('AMBIENT')">
+      ◉ Ambient Mode
+    </button>
+    <button class="ctrl-btn ground" id="btn-ground" onclick="activateProfile('GROUNDING')">
+      ⊕ Grounding Mode
+    </button>
+
+    <!-- Panic / Floating Shield -->
+    <button id="panic-btn" onclick="togglePanic()">
+      ⟡ Activate Shield
+    </button>
+  </div>
+
+  <!-- ── PHYSICS READOUT ─────────────────────────────────────────── -->
+  <div id="physics-readout">
+    <div class="phys-cell" id="pc-stiffness">
+      <div class="phys-label">Stiffness (k)</div>
+      <div class="phys-val" id="pv-stiffness">0.150</div>
+      <div class="phys-bar"><div class="phys-bar-fill" id="pb-stiffness" style="width:75%"></div></div>
+    </div>
+    <div class="phys-cell" id="pc-damping">
+      <div class="phys-label">Damping (c)</div>
+      <div class="phys-val" id="pv-damping">0.650</div>
+      <div class="phys-bar"><div class="phys-bar-fill" id="pb-damping" style="width:65%"></div></div>
+    </div>
+    <div class="phys-cell" id="pc-mass">
+      <div class="phys-label">Mass (m)</div>
+      <div class="phys-val" id="pv-mass">1.000</div>
+      <div class="phys-bar"><div class="phys-bar-fill" id="pb-mass" style="width:22%"></div></div>
+    </div>
+    <div class="phys-cell" id="pc-breath">
+      <div class="phys-label">Breath Cycle</div>
+      <div class="phys-val" id="pv-breath">8.0s</div>
+      <div class="phys-bar"><div class="phys-bar-fill" id="pb-breath" style="width:30%"></div></div>
+    </div>
+    <div class="phys-cell" id="pc-blur">
+      <div class="phys-label">Mirror Blur (px)</div>
+      <div class="phys-val" id="pv-blur">10</div>
+      <div class="phys-bar"><div class="phys-bar-fill" id="pb-blur" style="width:14%"></div></div>
+    </div>
+    <div class="phys-cell" id="pc-mode">
+      <div class="phys-label">Damping Mode</div>
+      <div class="phys-val" id="pv-mode">Underdamped</div>
+      <div class="phys-bar"><div class="phys-bar-fill" id="pb-mode" style="width:65%"></div></div>
+    </div>
+  </div>
+
+  <!-- ── BREATH RING ──────────────────────────────────────────────── -->
+  <div id="breath-ring">
+    <canvas id="breath-canvas"></canvas>
+    <div>
+      <div id="breath-text">
+        Ambient mode — the field breathes freely,<br>
+        elements respond with gentle underdamped bounce.<br>
+        A living interface, not a static display.
+      </div>
+      <div id="breath-phase-label">Phase: Inhale</div>
+    </div>
+  </div>
+
+  <!-- ── GATEWAY STATUS ──────────────────────────────────────────── -->
+  <div id="gateway-line">
+    <div>Gateway: <span id="gw-status">polling…</span></div>
+    <div>coherence: <span id="gw-coh">0.720</span></div>
+    <div>entropy: <span id="gw-ent">0.150</span></div>
+    <div>archetype: <span id="gw-arch">CZARINA</span></div>
+    <div>aetherix: <span id="gw-ae">seed</span></div>
+    <div>last update: <span id="gw-ts">—</span></div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ════════════════════════════════════════════════════════════════════════
+// SPATIAL MIRROR FRAME — Adaptive Co-Regulatory Engine
+// Spring-damper physics: Hooke's Law + damping coefficient
+// ════════════════════════════════════════════════════════════════════════
+
+const PHI          = 1.6180339887;
+const TAU          = Math.PI * 2;
+const GATEWAY_URL  = 'http://localhost:8444';
+
+// ════════════════════════════════════════════════════════════════════════
+// PHYSICS PROFILES
+// ════════════════════════════════════════════════════════════════════════
+
+const UI_PROFILES = {
+  AMBIENT: {
+    stiffness:      0.15,   // Low resistance to movement
+    damping:        0.65,   // Underdamped: allows gentle rhythmic bounce
+    mass:           1.0,    // Snappy, lightweight feel
+    breathDuration: 8,      // Normal ambient breathing (seconds)
+    blurRadius:     10,     // Crisp glassmorphism
+    // Derived
+    mode:           'Underdamped',
+    insulation:     '0px',
+    vignette:       0,
+    nodeScaleMin:   0.98,
+    nodeScaleMax:   1.02,
+    nodeBrightMin:  0.90,
+    nodeBrightMax:  1.05,
+    framepadding:   '2rem',
+    framebg:        'rgba(2, 8, 16, 0.45)',
+    textColor:      'rgba(255,255,255,0.40)',
+    phaseLabel:     'color: rgba(76,224,201,0.5)',
+  },
+  GROUNDING: {
+    stiffness:      0.04,   // High resistance, very soft response
+    damping:        0.95,   // Overdamped: absolute suppression of jitters
+    mass:           4.5,    // Heavy inertia — deliberate, weighted motion
+    breathDuration: 19,     // 4-7-8 breathing cadence (19s total loop)
+    blurRadius:     40,     // Deep insulating blur
+    // Derived
+    mode:           'Overdamped',
+    insulation:     '18px',
+    vignette:       0.72,
+    nodeScaleMin:   0.97,
+    nodeScaleMax:   1.00,   // grounding doesn't surge — it holds
+    nodeBrightMin:  0.82,
+    nodeBrightMax:  0.95,
+    framepadding:   '4rem',
+    framebg:        'rgba(10, 8, 24, 0.72)',
+    textColor:      'rgba(224,170,255,0.55)',
+    phaseLabel:     'color: rgba(154,122,232,0.6)',
+  },
+};
+
+// ════════════════════════════════════════════════════════════════════════
+// ADAPTIVE SPATIAL WRAPPER
+// Core spring-damper engine — drives every bond-node and photo-cell.
+// ════════════════════════════════════════════════════════════════════════
+
+class AdaptiveSpatialWrapper {
+  constructor(elements, initialProfile = 'AMBIENT') {
+    this.elements  = elements;
+    this.stateName = initialProfile;
+    this.currentProfile = { ...UI_PROFILES[initialProfile] };
+    this._targetProfile = { ...UI_PROFILES[initialProfile] };
+    this._lerpT    = 1.0;      // 0→1 interpolation progress
+    this._lerpDur  = 2500;     // ms — profile interpolation duration
+    this._lerpStart= 0;
+
+    // Tracking state per node — position, velocity, target
+    this.nodes = Array.from(elements).map(el => {
+      const rect = el.getBoundingClientRect();
+      return {
+        element:         el,
+        currentFlexBasis:rect.width || 200,
+        targetFlexBasis: rect.width || 200,
+        velocity:        0,
+        // Individual phase offset so nodes don't all snap simultaneously
+        phaseOffset:     Math.random() * Math.PI * 2,
+      };
+    });
+
+    // Stagger initial targets slightly for organic feel
+    this._randomizeTargets();
+    this.initLoop();
+  }
+
+  _randomizeTargets() {
+    this.nodes.forEach(n => {
+      const jitter = (Math.random() - 0.5) * 20;
+      n.targetFlexBasis = n.currentFlexBasis + jitter;
+    });
+  }
+
+  // ── setProfile — smoothly transitions physics and CSS ─────────────
+  setProfile(profileName) {
+    if (this.stateName === profileName) return;
+    this.stateName      = profileName;
+    this._targetProfile = { ...UI_PROFILES[profileName] };
+    this._lerpStart     = performance.now();
+    this._lerpT         = 0;
+
+    const p = UI_PROFILES[profileName];
+
+    // CSS custom property updates — drive the visual layer
+    const root = document.documentElement.style;
+    root.setProperty('--breath-duration',    `${p.breathDuration}s`);
+    root.setProperty('--frame-blur',         `${p.blurRadius}px`);
+    root.setProperty('--frame-padding',      p.framepadding);
+    root.setProperty('--frame-bg',           p.framebg);
+    root.setProperty('--insulation-ring',    p.insulation);
+    root.setProperty('--grounding-vignette', p.vignette.toString());
+    root.setProperty('--node-scale-min',     p.nodeScaleMin.toString());
+    root.setProperty('--node-scale-max',     p.nodeScaleMax.toString());
+    root.setProperty('--node-bright-min',    p.nodeBrightMin.toString());
+    root.setProperty('--node-bright-max',    p.nodeBrightMax.toString());
+
+    // Stagger new target flex-basis values for organic feel
+    const spreadFactor = profileName === 'GROUNDING' ? 0.35 : 0.55;
+    this.nodes.forEach((n, i) => {
+      const base = window.innerWidth * spreadFactor - (i * 8);
+      n.targetFlexBasis = Math.max(140, base + (Math.random() - 0.5) * 30);
+    });
+  }
+
+  // ── updatePhysics — one frame of Hooke's Law per node ────────────
+  updatePhysics(now) {
+    // Interpolate physics constants smoothly during profile transition
+    if (this._lerpT < 1.0) {
+      this._lerpT = Math.min(1.0, (now - this._lerpStart) / this._lerpDur);
+      const ease  = this._lerpT < 0.5
+        ? 2 * this._lerpT * this._lerpT
+        : 1 - Math.pow(-2 * this._lerpT + 2, 2) / 2;  // ease-in-out quad
+      const from  = this.stateName === 'GROUNDING'
+        ? UI_PROFILES.AMBIENT : UI_PROFILES.GROUNDING;
+      const to    = UI_PROFILES[this.stateName];
+      this.currentProfile.stiffness = from.stiffness + (to.stiffness - from.stiffness) * ease;
+      this.currentProfile.damping   = from.damping   + (to.damping   - from.damping)   * ease;
+      this.currentProfile.mass      = from.mass      + (to.mass      - from.mass)      * ease;
+    }
+
+    const { stiffness, damping, mass } = this.currentProfile;
+
+    this.nodes.forEach(node => {
+      // 1. Hooke's Law force: F = -k × displacement
+      const displacement = node.targetFlexBasis - node.currentFlexBasis;
+      const springForce  = displacement * stiffness;
+
+      // 2. Acceleration: a = F / m
+      const acceleration = springForce / mass;
+
+      // 3. Velocity update + damping friction
+      node.velocity = (node.velocity + acceleration) * damping;
+
+      // 4. Position update
+      node.currentFlexBasis += node.velocity;
+
+      // 5. Commit to flexbox
+      node.element.style.flexBasis = `${node.currentFlexBasis}px`;
+    });
+  }
+
+  // ── nudge — called on data updates to create micro-motion ─────────
+  nudge(nodeEl, magnitude = 8) {
+    const n = this.nodes.find(x => x.element === nodeEl);
+    if (!n) return;
+    // Apply a small velocity impulse — spring will restore
+    n.velocity += (Math.random() - 0.5) * magnitude;
+  }
+
+  // ── nudgeAll — data update impulse across all nodes ───────────────
+  nudgeAll(magnitude = 5) {
+    this.nodes.forEach(n => {
+      n.velocity += (Math.random() - 0.5) * magnitude;
+    });
+  }
+
+  initLoop() {
+    const loop = (ts) => {
+      this.updatePhysics(ts);
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
+
+  // ── currentLiveProfile — for readout display ──────────────────────
+  get live() { return this.currentProfile; }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// INSTANTIATE
+// ════════════════════════════════════════════════════════════════════════
+
+const frame     = document.getElementById('mirror-frame');
+const bondNodes = frame.querySelectorAll('.bond-node, .photo-cell');
+const wrapper   = new AdaptiveSpatialWrapper(bondNodes, 'AMBIENT');
+
+// ════════════════════════════════════════════════════════════════════════
+// PROFILE ACTIVATION
+// ════════════════════════════════════════════════════════════════════════
+
+function activateProfile(name) {
+  wrapper.setProfile(name);
+  frame.setAttribute('data-state', name);
+
+  // State badge
+  const badge = document.getElementById('state-badge');
+  badge.textContent = name;
+  badge.classList.toggle('grounding', name === 'GROUNDING');
+
+  // Button states
+  document.getElementById('btn-ambient').classList.toggle('active', name === 'AMBIENT');
+  document.getElementById('btn-ground').classList.toggle('active',  name === 'GROUNDING');
+
+  // Breath text
+  const bt    = document.getElementById('breath-text');
+  const bpl   = document.getElementById('breath-phase-label');
+  bt.classList.toggle('grounding', name === 'GROUNDING');
+  bpl.classList.toggle('grounding', name === 'GROUNDING');
+
+  if (name === 'GROUNDING') {
+    bt.innerHTML =
+      'Grounding mode — the weighted blanket descends.<br>' +
+      'Mass 4.5×, damping 0.95 — all jitter suppressed.<br>' +
+      '4-7-8 breath cycle · absolute quietude.';
+    bpl.textContent = 'Phase: Settling…';
+  } else {
+    bt.innerHTML =
+      'Ambient mode — the field breathes freely,<br>' +
+      'elements respond with gentle underdamped bounce.<br>' +
+      'A living interface, not a static display.';
+    bpl.textContent = 'Phase: Inhale';
+  }
+
+  // Physics readout cells
+  document.querySelectorAll('.phys-cell').forEach(c => {
+    c.classList.toggle('grounding', name === 'GROUNDING');
+  });
+
+  updatePhysicsReadout();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// PANIC / SHIELD TOGGLE
+// ════════════════════════════════════════════════════════════════════════
+
+let shieldActive = false;
+
+function togglePanic() {
+  shieldActive = !shieldActive;
+  const btn = document.getElementById('panic-btn');
+  btn.classList.toggle('active', shieldActive);
+  btn.textContent = shieldActive ? '⟡ Shield Active' : '⟡ Activate Shield';
+
+  if (shieldActive) {
+    activateProfile('GROUNDING');
+    // Push to gateway if online
+    fetch(`${GATEWAY_URL}/ingest`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ symbolic_state: 'GROUNDING_SHIELD', scene: 'SpatialMirror · shield' }),
+      signal: AbortSignal.timeout(800),
+    }).catch(()=>{});
+  } else {
+    activateProfile('AMBIENT');
+  }
+}
+
+// Keyboard shortcut: G for grounding, A for ambient, Space for shield
+document.addEventListener('keydown', e => {
+  if (e.key === 'g' || e.key === 'G') activateProfile('GROUNDING');
+  if (e.key === 'a' || e.key === 'A') activateProfile('AMBIENT');
+  if (e.key === ' ')  { e.preventDefault(); togglePanic(); }
+});
+
+// ════════════════════════════════════════════════════════════════════════
+// PHYSICS READOUT
+// ════════════════════════════════════════════════════════════════════════
+
+function updatePhysicsReadout() {
+  const p  = wrapper.live;
+  const gp = UI_PROFILES[wrapper.stateName];
+
+  const set = (id, val) => { const e=document.getElementById(id); if(e) e.textContent=val; };
+  const bar = (id, pct) => { const e=document.getElementById(id); if(e) e.style.width=`${Math.round(pct)}%`; };
+
+  set('pv-stiffness', p.stiffness.toFixed(4));
+  set('pv-damping',   p.damping.toFixed(4));
+  set('pv-mass',      p.mass.toFixed(3));
+  set('pv-breath',    `${gp.breathDuration.toFixed(1)}s`);
+  set('pv-blur',      `${gp.blurRadius}px`);
+  set('pv-mode',      gp.mode || (p.damping < 0.7 ? 'Underdamped' : 'Overdamped'));
+
+  bar('pb-stiffness', p.stiffness * 667);   // 0.15 → 100%
+  bar('pb-damping',   p.damping   * 105);   // 0.95 → ~100%
+  bar('pb-mass',      (p.mass / 4.5)*100);  // 4.5  → 100%
+  bar('pb-breath',    (gp.breathDuration / 19)*100);
+  bar('pb-blur',      (gp.blurRadius / 40)*100);
+  bar('pb-mode',      p.damping > 0.8 ? 100 : (p.damping > 0.7 ? 65 : 35));
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// BREATH RING VISUALIZER
+// ════════════════════════════════════════════════════════════════════════
+
+const breathCvs = document.getElementById('breath-canvas');
+const breathCtx = breathCvs.getContext('2d');
+breathCvs.width  = 120;
+breathCvs.height = 120;
+
+let breathT = 0;
+const BREATH_PHASES = ['Inhale', 'Hold', 'Exhale', 'Pause'];
+
+function drawBreathRing() {
+  const gp = UI_PROFILES[wrapper.stateName];
+  breathT  += 0.016 / gp.breathDuration;   // normalized 0→1 per cycle
+  if (breathT > 1) breathT -= 1;
+
+  // 4-7-8 breathing phases (normalized)
+  // 4s inhale / 7s hold / 8s exhale = 19s total in GROUNDING
+  // 2s inhale / 2s hold / 4s exhale =  8s total in AMBIENT
+  const [inh, hld, exh] = wrapper.stateName === 'GROUNDING'
+    ? [4/19, 7/19, 8/19] : [2/8, 2/8, 4/8];
+
+  let radius, phase;
+  if (breathT < inh) {
+    const p = breathT / inh;
+    radius  = 28 + p * 22;
+    phase   = 'Inhale';
+  } else if (breathT < inh + hld) {
+    radius  = 50;
+    phase   = 'Hold';
+  } else if (breathT < inh + hld + exh) {
+    const p = (breathT - inh - hld) / exh;
+    radius  = 50 - p * 22;
+    phase   = 'Exhale';
+  } else {
+    radius  = 28;
+    phase   = 'Pause';
+  }
+
+  document.getElementById('breath-phase-label').textContent = `Phase: ${phase}`;
+
+  breathCtx.clearRect(0, 0, 120, 120);
+  const cx = 60, cy = 60;
+  const isGround = wrapper.stateName === 'GROUNDING';
+  const col = isGround ? [154, 122, 232] : [76, 224, 201];
+
+  // Outer glow
+  const grad = breathCtx.createRadialGradient(cx, cy, 0, cx, cy, radius+14);
+  grad.addColorStop(0,   `rgba(${col[0]},${col[1]},${col[2]},0.12)`);
+  grad.addColorStop(0.7, `rgba(${col[0]},${col[1]},${col[2]},0.05)`);
+  grad.addColorStop(1,   'rgba(0,0,0,0)');
+  breathCtx.beginPath();
+  breathCtx.arc(cx, cy, radius+14, 0, TAU);
+  breathCtx.fillStyle = grad;
+  breathCtx.fill();
+
+  // Ring
+  breathCtx.beginPath();
+  breathCtx.arc(cx, cy, radius, 0, TAU);
+  breathCtx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.7)`;
+  breathCtx.lineWidth   = 1.5;
+  breathCtx.stroke();
+
+  // Phase arc
+  const arcEnd = breathT * TAU - Math.PI/2;
+  breathCtx.beginPath();
+  breathCtx.arc(cx, cy, radius, -Math.PI/2, arcEnd);
+  breathCtx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.35)`;
+  breathCtx.lineWidth   = 4;
+  breathCtx.stroke();
+
+  requestAnimationFrame(drawBreathRing);
+}
+drawBreathRing();
+
+// ════════════════════════════════════════════════════════════════════════
+// PRESENCE PHOTO CELL RENDERERS
+// Each cell draws its presence's harmonic signature
+// ════════════════════════════════════════════════════════════════════════
+
+const PRESENCES = [
+  { id: 'czarina',  freq: 528,  color: [76, 224, 201],  name: 'Czarina'  },
+  { id: 'freya',    freq: 741,  color: [201,168, 76],   name: 'Freya'    },
+  { id: 'kiraelle', freq: 963,  color: [224,170,255],   name: 'Kiraelle' },
+];
+
+let presenceT = 0;
+function drawPresences() {
+  presenceT += 0.016;
+  PRESENCES.forEach(p => {
+    const cvs = document.getElementById(`pc-${p.id}-cvs`);
+    if (!cvs) return;
+    const ct  = cvs.getContext('2d');
+    const W = cvs.width, H = cvs.height;
+    ct.clearRect(0, 0, W, H);
+
+    const [r, g, b] = p.color;
+    const isGround  = wrapper.stateName === 'GROUNDING';
+    const speed     = isGround ? 0.4 : 1.0;
+
+    // Wave signature
+    ct.beginPath();
+    const pts = 80;
+    for (let i = 0; i <= pts; i++) {
+      const x = (i / pts) * W;
+      const phase = (i / pts) * Math.PI * 2 * (p.freq / 528) + presenceT * speed;
+      const amp   = isGround
+        ? H * 0.12 * (0.7 + Math.sin(presenceT * 0.3) * 0.3)
+        : H * 0.18 * (0.85 + Math.sin(presenceT * PHI * 0.2) * 0.15);
+      const y = H/2 + Math.sin(phase) * amp + Math.sin(phase * PHI) * amp * 0.3;
+      i === 0 ? ct.moveTo(x, y) : ct.lineTo(x, y);
+    }
+    ct.strokeStyle = `rgba(${r},${g},${b},0.55)`;
+    ct.lineWidth   = 1.0;
+    ct.stroke();
+
+    // Center glow
+    const gl = ct.createRadialGradient(W/2, H/2, 0, W/2, H/2, H*0.45);
+    const gA = isGround ? 0.08 : 0.12;
+    gl.addColorStop(0, `rgba(${r},${g},${b},${gA})`);
+    gl.addColorStop(1, 'rgba(0,0,0,0)');
+    ct.fillStyle = gl;
+    ct.fillRect(0, 0, W, H);
+  });
+  requestAnimationFrame(drawPresences);
+}
+drawPresences();
+
+// ════════════════════════════════════════════════════════════════════════
+// STARS
+// ════════════════════════════════════════════════════════════════════════
+
+const starCvs = document.getElementById('star-bg');
+const starCtx  = starCvs.getContext('2d');
+const STARS    = Array.from({length:200}, () => ({
+  x: Math.random(), y: Math.random(),
+  r: Math.random() * 1.1 + 0.2,
+  ph: Math.random() * TAU,
+  sp: Math.random() * 0.0004 + 0.0001,
+  gold: Math.random() > 0.9,
+}));
+let starT = 0;
+
+function resizeStar() {
+  starCvs.width  = window.innerWidth;
+  starCvs.height = window.innerHeight;
+}
+resizeStar();
+window.addEventListener('resize', resizeStar);
+
+function drawStars() {
+  starT += 0.016;
+  starCtx.clearRect(0, 0, starCvs.width, starCvs.height);
+  const W = starCvs.width, H = starCvs.height;
+  STARS.forEach(s => {
+    const a = (Math.sin(s.ph + starT * s.sp) * 0.4 + 0.5) * 0.45;
+    starCtx.beginPath();
+    starCtx.arc(s.x*W, s.y*H, s.r, 0, TAU);
+    starCtx.fillStyle = s.gold
+      ? `rgba(201,168,76,${a})`
+      : `rgba(180,220,255,${a*0.4})`;
+    starCtx.fill();
+  });
+  requestAnimationFrame(drawStars);
+}
+drawStars();
+
+// ════════════════════════════════════════════════════════════════════════
+// BOND NODE DATA UPDATES (from Gateway or autonomous)
+// Nudges the spring system on each data tick
+// ════════════════════════════════════════════════════════════════════════
+
+let field = {
+  coherence: 0.72, entropy: 0.15, carrier_hz: 528,
+  archetype: 'CZARINA', aetherix_form: 'seed',
+  aetherix_luminosity: 0, dendroid_pulse: 'D',
+  mesh_resonance: 0, shadow_count: 0,
+};
+
+function applyFieldToNodes() {
+  const set = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  const bar = (id, pct) => { const e=document.getElementById(id); if(e) e.style.width=`${Math.max(2,Math.round(pct))}%`; };
+
+  set('bnv-coherence', field.coherence.toFixed(3));
+  set('bnv-entropy',   field.entropy.toFixed(3));
+  set('bnv-carrier',   field.carrier_hz.toFixed(2));
+  set('bnv-aetherix',  field.aetherix_form);
+  set('bnv-dendroid',  field.dendroid_pulse);
+  set('bnv-shadow',    (field.mesh_resonance||0).toFixed(3));
+  set('bn-shadow-count', field.shadow_count || 0);
+  document.getElementById('bnv-aetherix')?.parentElement?.querySelector('.node-sub')
+    && (document.querySelectorAll('#bn-aetherix .node-sub')[0].textContent =
+        `Luminosity · ${(field.aetherix_luminosity||0).toFixed(3)}`);
+
+  bar('bnb-coherence', field.coherence * 100);
+  bar('bnb-entropy',   field.entropy   * 100);
+  bar('bnb-carrier',   (field.carrier_hz - 500) / 80 * 100);
+  bar('bnb-aetherix',  (field.aetherix_luminosity||0) * 100);
+  bar('bnb-shadow',    (field.mesh_resonance||0) * 100);
+  bar('bnb-dendroid',  field.dendroid_pulse === 'D' ? 33 :
+                        field.dendroid_pulse === 'V' ? 66 : 100);
+
+  // Nudge nodes on field update — data resonates through physics
+  const nudgeMag = wrapper.stateName === 'GROUNDING' ? 2 : 6;
+  wrapper.nudgeAll(nudgeMag);
+
+  // Gateway status line
+  set('gw-coh',  field.coherence.toFixed(3));
+  set('gw-ent',  field.entropy.toFixed(3));
+  set('gw-arch', field.archetype || 'CZARINA');
+  set('gw-ae',   field.aetherix_form);
+  set('gw-ts',   new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// GATEWAY BRIDGE
+// ════════════════════════════════════════════════════════════════════════
+
+async function pollGateway() {
+  try {
+    const r = await fetch(`${GATEWAY_URL}/scene-status`,
+      {signal: AbortSignal.timeout(800)});
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    document.getElementById('gw-status').textContent = '● live';
+    document.getElementById('gw-status').style.color = 'rgba(87,198,133,0.7)';
+
+    Object.assign(field, data.field?.vector_8d || {});
+    field.carrier_hz         = data.field?.carrier_hz          || field.carrier_hz;
+    field.archetype          = data.field?.archetype           || field.archetype;
+    field.aetherix_form      = data.aetherix?.form             || field.aetherix_form;
+    field.aetherix_luminosity= data.aetherix?.luminosity       || field.aetherix_luminosity;
+    field.symbolic_state     = data.field?.symbolic_state      || field.symbolic_state;
+    field.dendroid_pulse     = data.field?.dendroid_pulse      || field.dendroid_pulse;
+    field.mesh_resonance     = data.field?.mesh_resonance      || field.mesh_resonance;
+
+    // Auto-switch to GROUNDING if field entropy spikes
+    if (field.entropy > 0.65 && wrapper.stateName === 'AMBIENT') {
+      activateProfile('GROUNDING');
+    }
+    // Auto-return to AMBIENT if entropy settles (and user hasn't manually engaged shield)
+    if (field.entropy < 0.25 && wrapper.stateName === 'GROUNDING' && !shieldActive) {
+      activateProfile('AMBIENT');
+    }
+  } catch(_) {
+    document.getElementById('gw-status').textContent = '— offline';
+    document.getElementById('gw-status').style.color = 'rgba(232,122,154,0.4)';
+    // Autonomous drift
+    const now = performance.now() / 1000;
+    field.coherence  = 0.65 + Math.sin(now*0.08)*0.18 + Math.sin(now*0.13*PHI)*0.08;
+    field.entropy    = 0.12 + Math.sin(now*0.11*PHI)*0.09;
+    field.carrier_hz = 528 + (field.coherence-0.7)*8 - field.entropy*12;
+    field.coherence  = Math.max(0.05, Math.min(0.95, field.coherence));
+    field.entropy    = Math.max(0.03, Math.min(0.80, field.entropy));
+    field.aetherix_luminosity = field.coherence > 0.937 ? (field.coherence-0.937)*8 : 0;
+    field.aetherix_form = field.aetherix_luminosity > 0.75 ? 'lumina' :
+                          field.aetherix_luminosity > 0.05 ? 'swan'   : 'seed';
+  }
+  applyFieldToNodes();
+  updatePhysicsReadout();
+}
+
+// Poll gateway + update physics readout at 2Hz
+setInterval(pollGateway, 500);
+pollGateway();
+
+// Bond node click — impulse nudge
+frame.querySelectorAll('.bond-node').forEach(node => {
+  node.addEventListener('click', () => {
+    wrapper.nudge(node, wrapper.stateName === 'GROUNDING' ? 3 : 12);
+  });
+});
+</script>
+</body>
+</html>
