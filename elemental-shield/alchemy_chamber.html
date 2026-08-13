@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TurtleWalker Studio — Alchemy Chamber Prototype</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 100vw; height: 100vh; overflow: hidden;
+      color: #f3f4f6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      display: flex;
+    }
+    #sidebar {
+      width: 380px; height: 100%; background: #0b0f19;
+      border-right: 1px solid #1f2937; padding: 1.25rem;
+      display: flex; flex-direction: column; gap: 1.25rem; z-index: 10;
+    }
+    h2 { font-size: 1.1rem; letter-spacing: 0.05em; color: #60a5fa; text-transform: uppercase; }
+    .section { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 1rem; }
+    .label { font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.5rem; display: block; }
+    textarea {
+      width: 100%; height: 80px; background: #030712; border: 1px solid #374151;
+      color: #34d399; font-family: monospace; font-size: 0.8rem; padding: 0.5rem; border-radius: 4px; resize: none;
+    }
+    .control-group { margin-bottom: 0.75rem; }
+    .control-group:last-child { margin-bottom: 0; }
+    .slider-header { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.25rem; }
+    input[type=range] { width: 100%; accent-color: #3b82f6; }
+    #memory-log { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
+    .memory-card {
+      background: #030712; border-left: 3px solid #3b82f6; padding: 0.5rem 0.75rem;
+      font-size: 0.75rem; border-radius: 0 4px 4px 0; display: flex; flex-direction: column; gap: 0.25rem;
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .memory-card:hover { border-left-color: #60a5fa; }
+    .memory-card .title { color: #f3f4f6; font-weight: 600; }
+    .memory-card .tags { color: #9ca3af; font-size: 0.7rem; }
+    #viewport { flex-grow: 1; height: 100%; position: relative; background: #030712; }
+    #canvas-container { width: 100%; height: 100%; }
+    .overlay-info {
+      position: absolute; top: 1.25rem; right: 1.25rem;
+      background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(8px);
+      border: 1px solid #1f2937; padding: 0.75rem 1rem; border-radius: 6px;
+      font-size: 0.8rem; color: #9ca3af; pointer-events: none;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="sidebar">
+    <h2>Alchemy Chamber</h2>
+    <div class="section">
+      <span class="label">Semantic Loom (Transformation Rule)</span>
+      <textarea id="rule-editor" readonly>WHEN idea == "Pet Finder + Weather"
+AND resonance > 0.5
+THEN cluster_spatial_aura()
+TRANSFORM into living_topology</textarea>
+    </div>
+    <div class="section">
+      <span class="label">Resonance Console</span>
+      <div class="control-group">
+        <div class="slider-header"><span>Coherence</span><span id="val-coherence">0.20</span></div>
+        <input type="range" id="slider-coherence" min="0" max="1" step="0.01" value="0.20">
+      </div>
+      <div class="control-group">
+        <div class="slider-header"><span>Memory Density</span><span id="val-density">0.30</span></div>
+        <input type="range" id="slider-density" min="0" max="1" step="0.01" value="0.30">
+      </div>
+      <div class="control-group">
+        <div class="slider-header"><span>Emotional Weight</span><span id="val-emotional">0.80</span></div>
+        <input type="range" id="slider-emotional" min="0" max="1" step="0.01" value="0.80">
+      </div>
+    </div>
+    <div class="section" style="flex-grow: 1; display: flex; flex-direction: column;">
+      <span class="label">Transformation Memory</span>
+      <div id="memory-log"></div>
+    </div>
+  </div>
+  <div id="viewport">
+    <div id="canvas-container"></div>
+    <div class="overlay-info">
+      <div>Manifestation: <strong id="manifestation-type" style="color: #60a5fa;">Organic Point Cloud</strong></div>
+      <div>Topology Nodes: <span id="node-count">800</span></div>
+    </div>
+  </div>
+  <script type="module">
+    import * as THREE from 'three';
+    const state = { coherence: 0.20, memoryDensity: 0.30, emotionalWeight: 0.80, time: 0 };
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x030712, 0.05);
+    const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(0, 0, 7);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x030712, 1);
+    container.appendChild(renderer.domElement);
+    const vertexShader = `
+      uniform float uTime; uniform float uCoherence; uniform float uMemoryDensity; uniform float uEmotionalWeight;
+      varying vec3 vPosition; varying float vNoise;
+      float hash(vec3 p) { p = fract(p * vec3(443.8975, 397.2973, 491.1871)); p += dot(p, p.yxz + 19.19); return fract((p.x + p.y) * p.z); }
+      void main() {
+        vPosition = position;
+        float turbulence = (1.0 - uCoherence) * 1.5;
+        vec3 noiseVec = vec3(sin(position.y * 3.0 + uTime) * turbulence, cos(position.z * 3.0 + uTime) * turbulence, sin(position.x * 3.0 + uTime) * turbulence);
+        vec3 targetPos = normalize(position) * (1.5 + uMemoryDensity);
+        vec3 finalPos = mix(position + noiseVec, targetPos, uCoherence);
+        vNoise = hash(finalPos + uTime * 0.1);
+        vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
+        gl_PointSize = (12.0 * uMemoryDensity + 4.0) * (1.0 / -mvPosition.z);
+        gl_Position = projectionMatrix * mvPosition;
+      }`;
+    const fragmentShader = `
+      uniform float uEmotionalWeight; uniform float uCoherence;
+      varying vec3 vPosition; varying float vNoise;
+      void main() {
+        vec3 coolColor = vec3(0.2, 0.6, 1.0);
+        vec3 warmColor = vec3(1.0, 0.2, 0.5);
+        vec3 baseColor = mix(coolColor, warmColor, uEmotionalWeight);
+        float dist = length(gl_PointCoord - vec2(0.5));
+        if (dist > 0.5) discard;
+        float alpha = (1.0 - dist * 2.0) * mix(0.4, 0.9, uCoherence);
+        gl_FragColor = vec4(baseColor + vNoise * 0.2, alpha);
+      }`;
+    const uniforms = { uTime: {value:0}, uCoherence: {value:state.coherence}, uMemoryDensity: {value:state.memoryDensity}, uEmotionalWeight: {value:state.emotionalWeight} };
+    const particleCount = 800;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount * 3; i += 3) { positions[i]=(Math.random()-0.5)*5; positions[i+1]=(Math.random()-0.5)*5; positions[i+2]=(Math.random()-0.5)*5; }
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.ShaderMaterial({ vertexShader, fragmentShader, uniforms, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+    const particleSystem = new THREE.Points(geometry, material);
+    scene.add(particleSystem);
+    const latticeGeo = new THREE.IcosahedronGeometry(1.6, 2);
+    const latticeMat = new THREE.MeshBasicMaterial({ color: 0x60a5fa, wireframe: true, transparent: true, opacity: 0 });
+    const latticeMesh = new THREE.Mesh(latticeGeo, latticeMat);
+    scene.add(latticeMesh);
+    const sCoherence = document.getElementById('slider-coherence');
+    const sDensity = document.getElementById('slider-density');
+    const sEmotional = document.getElementById('slider-emotional');
+    const vCoherence = document.getElementById('val-coherence');
+    const vDensity = document.getElementById('val-density');
+    const vEmotional = document.getElementById('val-emotional');
+    const manifestationText = document.getElementById('manifestation-type');
+    function updateState() {
+      state.coherence = parseFloat(sCoherence.value);
+      state.memoryDensity = parseFloat(sDensity.value);
+      state.emotionalWeight = parseFloat(sEmotional.value);
+      vCoherence.innerText = state.coherence.toFixed(2);
+      vDensity.innerText = state.memoryDensity.toFixed(2);
+      vEmotional.innerText = state.emotionalWeight.toFixed(2);
+      uniforms.uCoherence.value = state.coherence;
+      uniforms.uMemoryDensity.value = state.memoryDensity;
+      uniforms.uEmotionalWeight.value = state.emotionalWeight;
+      latticeMat.opacity = Math.max(0, (state.coherence - 0.5) * 1.8);
+      if (state.coherence < 0.4) { manifestationText.innerText = 'Fluid Nebula / Unstructured Stream'; manifestationText.style.color = '#9ca3af'; }
+      else if (state.coherence < 0.75) { manifestationText.innerText = 'Aura Matrix / Clustered Topology'; manifestationText.style.color = '#34d399'; }
+      else { manifestationText.innerText = 'Structured Crystal Matrix'; manifestationText.style.color = '#60a5fa'; }
+    }
+    sCoherence.addEventListener('input', updateState);
+    sDensity.addEventListener('input', updateState);
+    sEmotional.addEventListener('input', updateState);
+    const memoryLog = document.getElementById('memory-log');
+    function addMemoryCard(title, tags, stateSnapshot) {
+      const card = document.createElement('div');
+      card.className = 'memory-card';
+      card.innerHTML = '<div class="title">'+title+'</div><div class="tags">'+tags+'</div>';
+      card.addEventListener('click', () => { sCoherence.value=stateSnapshot.coherence; sDensity.value=stateSnapshot.memoryDensity; sEmotional.value=stateSnapshot.emotionalWeight; updateState(); });
+      memoryLog.prepend(card);
+    }
+    addMemoryCard('Seed Ingested', 'Source: Unfinished Note | Coherence: 0.20', {coherence:0.20,memoryDensity:0.30,emotionalWeight:0.80});
+    addMemoryCard('Weather + Pet Finder Synthesized', 'Topology: Clustered Aura | Coherence: 0.55', {coherence:0.55,memoryDensity:0.60,emotionalWeight:0.75});
+    addMemoryCard('Spatial Crystal Formed', 'State: Reusable Component | Coherence: 0.85', {coherence:0.85,memoryDensity:0.85,emotionalWeight:0.90});
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      state.time += delta;
+      uniforms.uTime.value = state.time;
+      particleSystem.rotation.y = state.time * 0.1;
+      particleSystem.rotation.x = Math.sin(state.time * 0.05) * 0.2;
+      latticeMesh.rotation.y = -state.time * 0.15;
+      renderer.render(scene, camera);
+    }
+    animate();
+    window.addEventListener('resize', () => { camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); });
+  </script>
+</body>
+</html>
