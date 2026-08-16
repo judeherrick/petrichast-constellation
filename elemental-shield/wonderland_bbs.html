@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wonderland — WWBBS Spatial Archive</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --pigment-light: #f0f8ff;
+  --pigment-blue: #003366;
+  --nano: #ffffff;
+  --spark: #ff6b35;
+}
+body { font-family: system-ui, sans-serif; background: var(--pigment-light); color: var(--pigment-blue); margin: 0; padding: 0; }
+.room { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; padding: 2rem; }
+.room[data-name*="SPRITES"] { background: var(--pigment-light); border-top: 4px solid var(--spark); }
+.room[data-name*="THEATER"] { background: var(--pigment-blue); color: var(--nano); border-top: 4px solid var(--nano); }
+.pipeline { display: flex; flex-wrap: wrap; gap: 1rem; padding: 2rem; background: var(--nano); border-bottom: 2px solid var(--pigment-blue); }
+.map { display: flex; flex-wrap: wrap; gap: 1rem; padding: 2rem; border-bottom: 2px solid var(--pigment-blue); }
+.map[data-name*="TITLE-IMAGE"] { background: var(--nano); color: var(--pigment-light); border-top: 4px solid var(--pigment-blue); }
+@media (max-width: 768px) { .room { grid-template-columns: 1fr; } .map { flex-direction: column; } }
+/* SuperHQ Node Control HUD */
+#hq-hud {
+  position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+  background: rgba(0, 51, 102, 0.9); color: #ffffff;
+  padding: 1rem; border-radius: 8px; border: 1px solid #ff6b35;
+  font-family: monospace; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+</style>
+</head>
+<body>
+<!-- Wonderland BBS Spatial Archive — data-name rooms and pipelines -->
+<!-- Original archive structure preserved. SuperHQ node indexing added. -->
+<div class="room" data-name="WWBBS/SPRITES">
+  <div><h2>SPRITES</h2><p>Character sprites: Hotpotatoman, Jack in the Box</p></div>
+  <div><p>Title sprites and character archive</p></div>
+  <div><p>Sprite sheet collection</p></div>
+</div>
+<div class="room" data-name="SHERIFFRINEVILLEYETTOBECHOSEN/THEATER">
+  <div><h2>THEATER</h2><p>Theater video nodes 01-03</p></div>
+  <div><p>Embedded theater performances</p></div>
+  <div><p>Live archive theater</p></div>
+</div>
+<div class="pipeline" data-name="WWBBS/PIPELINE">
+  <div><h2>PIPELINE</h2></div>
+  <div><p>Video pipeline: V2832, V2831, V2927, V2932, V3021, V2918, V2926</p></div>
+  <div><p>Sequential media processing</p></div>
+</div>
+<div class="map" data-name="WWBBS/MUSIC">
+  <div><h2>MUSIC</h2><p>Music nodes: V2805, V3022, V3001, V3103</p></div>
+  <div><p>Audio archive collection</p></div>
+</div>
+<div class="map" data-name="WWBBS/VIDEOS">
+  <div><h2>VIDEOS</h2><p>Video archive: V2910, V2806, V2821, V2828, V2915, V3023</p></div>
+  <div><p>Full video collection</p></div>
+</div>
+<div class="map" data-name="WWBBS/SOCIALMEDIA">
+  <div><h2>SOCIAL MEDIA</h2><p>Social clips: V2841, V2808, V2908, V2911</p></div>
+  <div><p>Social media archive</p></div>
+</div>
+<div class="map" data-name="WWBBS/SOUNDS">
+  <div><h2>SOUNDS</h2><p>Audio sound collection</p></div>
+  <div><p>Sound effects and ambience</p></div>
+</div>
+<div class="map" data-name="WWBBS/CREDITS">
+  <div><h2>CREDITS</h2><p>WWBBS project credits</p></div>
+  <div><p>Special thanks to all contributors and the Internet Archive community.</p></div>
+</div>
+
+<script>
+// SuperHQ Node Control Engine
+document.addEventListener('DOMContentLoaded', () => {
+  const spatialNodes = Array.from(document.querySelectorAll('[data-name]')).map((el, i) => ({
+    id: i, path: el.getAttribute('data-name'), element: el
+  }));
+  console.log('[SuperHQ Engine] Indexed ' + spatialNodes.length + ' spatial nodes.');
+
+  const hud = document.createElement('div');
+  hud.id = 'hq-hud';
+  hud.innerHTML = '<div style="font-weight:bold;margin-bottom:0.5rem;color:#ff6b35;">SUPER-HQ NODE CONTROL</div>' +
+    '<div>Active Nodes: ' + spatialNodes.length + '</div>' +
+    '<label style="display:block;margin-top:0.5rem;font-size:0.8rem;">Filter Domain:</label>' +
+    '<select id="node-filter" style="width:100%;background:#f0f8ff;color:#003366;border:none;padding:4px;">' +
+    '<option value="ALL">Show All Rooms & Maps</option>' +
+    '<option value="THEATER">Theater / Video Nodes</option>' +
+    '<option value="MUSIC">Music / Audio Nodes</option>' +
+    '<option value="PIPELINE">Pipeline Stream</option>' +
+    '<option value="SPRITES">Sprite Nodes</option>' +
+    '<option value="VIDEOS">Video Nodes</option>' +
+    '</select>';
+  document.body.appendChild(hud);
+
+  document.getElementById('node-filter').addEventListener('change', (e) => {
+    const val = e.target.value;
+    spatialNodes.forEach(node => {
+      node.element.style.display = (val === 'ALL' || node.path.includes(val)) ? '' : 'none';
+    });
+  });
+});
+</script>
+</body>
+</html>
