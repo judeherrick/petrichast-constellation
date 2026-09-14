@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Horusine Canvas v2.2 · Contradiction-Hardened Epistemic Engine</title>
+<style>
+:root {
+  --bg: #0b0f17; --panel: #141b26; --border: #263345; --text: #d0d9e5; --dim: #7a889b;
+  --accent: #58a6ff; --eye: #ffb86c;
+  --verified: #3fb950; --refuted: #f85149; --unresolved: #d29922; --open: #58a6ff;
+  --contradiction: #ff6b6b; --contra-bg: rgba(255,107,107,0.08);
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, monospace; margin: 0; padding: 14px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+.container { width: 100%; max-width: 1400px; display: flex; flex-direction: column; gap: 12px; }
+header { border-bottom: 1px solid var(--border); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end; }
+h1 { margin: 0; font-size: 1.3rem; color: var(--accent); font-family: monospace; }
+.tagline { margin: 2px 0 0; font-size: 0.8rem; color: var(--dim); font-style: italic; }
+.main-layout { display: grid; grid-template-columns: 290px 1fr 340px; gap: 12px; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.panel h2 { margin: 0 0 4px; font-size: 0.9rem; color: var(--eye); font-family: monospace; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+select, button, input { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 5px; font-size: 0.8rem; font-family: inherit; }
+button { cursor: pointer; transition: all 0.15s ease; }
+button:hover { border-color: var(--accent); color: var(--accent); }
+button.primary { background: #1f6f3a; border-color: #2ea043; color: #fff; }
+button.contra { background: #5f1f1f; border-color: #f85149; color: #ffb0b0; }
+button.contra:hover { border-color: #ff6b6b; color: #ff6b6b; }
+.event-log { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; font-size: 0.72rem; height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.event-card { border-left: 3px solid var(--accent); padding: 4px 6px; background: rgba(255,255,255,0.02); }
+.event-card .eid { color: var(--eye); font-weight: bold; }
+.event-card.contra { border-left-color: var(--contradiction); background: var(--contra-bg); }
+.event-card.contra .eid { color: var(--contradiction); }
+.contra-detail { color: var(--contradiction); font-size: 0.68rem; margin-top: 2px; }
+.querion-container { display: flex; flex-direction: column; gap: 10px; max-height: 620px; overflow-y: auto; padding-right: 4px; }
+.querion-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; }
+.q-header { display: flex; justify-content: space-between; align-items: center; }
+.q-id { color: var(--accent); font-weight: bold; }
+.status-tag { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+.st-OPEN { background: rgba(88,166,255,0.15); color: var(--open); border: 1px solid var(--open); }
+.st-VERIFIED_FORMAL { background: rgba(63,185,80,0.15); color: var(--verified); border: 1px solid var(--verified); }
+.st-HIGH_BELIEF_UNPROVEN { background: rgba(210,153,34,0.15); color: var(--unresolved); border: 1px solid var(--unresolved); }
+.st-REFUTED { background: rgba(248,81,73,0.15); color: var(--refuted); border: 1px solid var(--refuted); }
+.st-CONTRADICTED { background: rgba(255,107,107,0.2); color: var(--contradiction); border: 1px solid var(--contradiction); }
+.bar-wrap { display: flex; flex-direction: column; gap: 3px; margin: 4px 0; }
+.bar-label { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--dim); }
+.bar { height: 6px; background: #222; border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--accent); transition: width 0.3s; }
+.bar-fill.refuted-fill { background: var(--refuted); }
+.q-footer { font-size: 0.72rem; color: var(--dim); border-top: 1px dashed var(--border); padding-top: 4px; margin-top: 2px; }
+.prov { font-size: 0.65rem; color: var(--dim); margin-top: 2px; }
+.prov .sup { color: var(--verified); }
+.prov .ref { color: var(--refuted); }
+.evi-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px; }
+.evi-val { font-size: 1.1rem; color: var(--eye); font-weight: bold; }
+.contra-feed { background: var(--contra-bg); border: 1px solid rgba(255,107,107,0.3); border-radius: 6px; padding: 8px; font-size: 0.7rem; max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.contra-item { color: var(--contradiction); border-left: 2px solid var(--contradiction); padding-left: 6px; }
+.export-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; font-size: 0.7rem; font-family: monospace; height: 150px; overflow: auto; white-space: pre-wrap; color: var(--dim); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>Horusine Epistemic Canvas v2.2</h1>
+      <div class="tagline">Active Inference · Bayesian Belief · Formal Proof Gate · Contradiction Detection</div>
+    </div>
+    <div style="font-size:0.8rem; color:var(--dim)">
+      Querions: <span id="qCount" style="color:var(--accent)">0</span> |
+      Evidence: <span id="eCount" style="color:var(--eye)">0</span> |
+      Contradictions: <span id="cCount" style="color:var(--contradiction)">0</span>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <div class="panel">
+      <h2>Observation Stream</h2>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <select id="domainSelect">
+          <option value="ca_life">Cellular Automaton Signals</option>
+          <option value="keter_router">Wild Keter Path Tracing</option>
+          <option value="pet_tracker">Pet Finder Clue Stream</option>
+        </select>
+        <div style="display:flex; gap:6px;">
+          <button id="injectBtn" class="primary" style="flex:1">⚡ Observe</button>
+          <button id="contraBtn" class="contra" style="flex:1">⚠ Contradict</button>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button id="autoBtn" style="flex:1">▶ Auto</button>
+          <button id="resetBtn" style="flex:1">↺ Reset</button>
+        </div>
+      </div>
+      <h2 style="margin-top:4px">Evidence Ledger</h2>
+      <div class="event-log" id="eventLog"><div style="color:var(--dim)">Awaiting observations...</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>Active Querion Investigation Tree</h2>
+      <div class="querion-container" id="querionTree"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Active Discrimination (EVI)</h2>
+      <div class="evi-box">
+        <div>Highest EVI Action:</div>
+        <div id="eviAction" style="color:var(--accent); font-weight:600">No active tests required</div>
+        <div>Entropy Index: <span id="eviVal" class="evi-val">0.000</span></div>
+        <button id="executeEviBtn">🎯 Execute High-EVI Test</button>
+      </div>
+      <h2 style="margin-top:4px">⚠ Contradiction Feed</h2>
+      <div class="contra-feed" id="contraFeed">
+        <div style="color:var(--dim)">No contradictions detected. Belief and observation agree.</div>
+      </div>
+      <h2 style="margin-top:4px">State Export</h2>
+      <div style="display:flex; gap:6px;">
+        <button id="jsonBtn" style="flex:1">📋 JSON</button>
+        <button id="mermaidBtn" style="flex:1">🧜 Mermaid</button>
+      </div>
+      <div class="export-box" id="exportBox">Select an export mode...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * QuerionEngine v2.2 — Contradiction-Hardened Epistemic Kernel
+ *
+ * New in v2.2:
+ *   1. Hypothesis predictions: each hypothesis declares expected observable values
+ *   2. Contradiction detection: observation vs prediction mismatch is a CONTRADICTION event
+ *   3. Contradiction-aware Bayesian updates (strong refutation × 0.05)
+ *   4. Formal constraint violation marking
+ *   5. Evidence provenance on every hypothesis (support/refute key inspection)
+ *   6. "Why did belief change?" — full trace from evidence to posterior
+ *   7. Reset/replay — experiments are repeatable
+ *
+ * The key distinction this hardens:
+ *   "I believe this"     ≠ posterior > 0.88
+ *   "I can prove this"   ≠ all formal invariants satisfied
+ *   "I don't know yet, and I know what I need" ≠ residual child Querion with named constraint
+ *   "My belief was wrong" ≠ CONTRADICTION event, not just quiet posterior drift
+ */
+class QuerionEngine {
+  constructor(options = {}) {
+    this.evidenceLedger = new Map();
+    this.activeQuerions = new Map();
+    this.contradictions = [];
+    this.nextQid = 1;
+    this.nextEid = 1;
+    this.likelihoodFn = options.likelihoodFn || null;
+  }
+
+  reset() {
+    this.evidenceLedger.clear();
+    this.activeQuerions.clear();
+    this.contradictions = [];
+    this.nextQid = 1;
+    this.nextEid = 1;
+    this._seed();
+  }
+
+  observe(event) {
+    const eid = 'E-' + String(this.nextEid++).padStart(4, '0');
+    const record = {
+      id: eid,
+      timestamp: Date.now(),
+      domain: event.domain || 'general',
+      source: event.source || 'unknown',
+      delta: event.delta || {},
+      metadata: event.metadata || {},
+      contradiction: null
+    };
+    this.evidenceLedger.set(eid, record);
+    this._evaluateQuerions(record);
+    return record;
+  }
+
+  raiseQuerion(params) {
+    const qid = 'Q-' + String(this.nextQid++).padStart(4, '0');
+    const querion = {
+      id: qid,
+      parentId: params.parentId || null,
+      question: params.question,
+      domain: params.domain || 'general',
+      status: 'OPEN',
+      hypotheses: params.hypotheses.map((h, i) => ({
+        id: 'H' + (i + 1),
+        claim: h.claim,
+        predictions: h.predictions || null,
+        prior: h.prior || 1.0 / params.hypotheses.length,
+        posterior: h.prior || 1.0 / params.hypotheses.length,
+        supportKeys: [],
+        refuteKeys: [],
+        contradictionKeys: []
+      })),
+      requiredDeterminations: params.requiredDeterminations || [],
+      formalConstraints: params.formalConstraints || {},
+      violatedConstraints: [],
+      proofStatus: 'NOT_ESTABLISHED',
+      statusReason: null,
+      discrimination: null
+    };
+    this._updateDiscrimination(querion);
+    this.activeQuerions.set(qid, querion);
+    return querion;
+  }
+
+  _evaluateQuerions(evidenceRecord) {
+    for (const [qid, q] of this.activeQuerions.entries()) {
+      if (q.status === 'VERIFIED_FORMAL' || q.status === 'REFUTED') continue;
+
+      // 1. CONTRADICTION DETECTION — before Bayesian update
+      const contradiction = this._checkContradiction(q, evidenceRecord);
+
+      // 2. Bayesian Updates
+      let posteriorSum = 0;
+      q.hypotheses.forEach(h => {
+        let likelihood;
+        if (h.contradictionKeys.includes(evidenceRecord.id)) {
+          likelihood = 0.05; // Strong refutation for contradicted predictions
+        } else if (this.likelihoodFn) {
+          likelihood = this.likelihoodFn(h, evidenceRecord, q);
+        } else {
+          likelihood = this._defaultLikelihood(h, evidenceRecord);
+        }
+        h.posterior = h.posterior * likelihood;
+        if (likelihood > 1.0) h.supportKeys.push(evidenceRecord.id);
+        else if (likelihood < 1.0) h.refuteKeys.push(evidenceRecord.id);
+        posteriorSum += h.posterior;
+      });
+
+      // Normalize
+      if (posteriorSum > 0) {
+        q.hypotheses.forEach(h => {
+          h.posterior = Number((h.posterior / posteriorSum).toFixed(4));
+        });
+      }
+
+      // 3. Formal Prover Gate
+      this._checkFormalGate(q, evidenceRecord);
+      this._updateDiscrimination(q);
+    }
+  }
+
+  _checkContradiction(querion, evidenceRecord) {
+    for (const h of querion.hypotheses) {
+      if (!h.predictions) continue;
+      for (const [key, expected] of Object.entries(h.predictions)) {
+        const observed = evidenceRecord.delta[key];
+        if (observed !== undefined && observed !== expected) {
+          const contradiction = {
+            querionId: querion.id,
+            hypothesisId: h.id,
+            hypothesisClaim: h.claim,
+            key: key,
+            expected: expected,
+            observed: observed,
+            evidenceId: evidenceRecord.id,
+            source: evidenceRecord.source,
+            severity: Number((Math.abs(observed - expected) / Math.max(Math.abs(expected), 1)).toFixed(3))
+          };
+          this.contradictions.push(contradiction);
+          h.contradictionKeys.push(evidenceRecord.id);
+          evidenceRecord.contradiction = contradiction;
+
+          // Mark formal constraint violated
+          if (key in querion.formalConstraints && !querion.violatedConstraints.includes(key)) {
+            querion.violatedConstraints.push(key);
+          }
+          return contradiction;
+        }
+      }
+    }
+    return null;
+  }
+
+  _defaultLikelihood(h, evidence) {
+    if (evidence.delta && evidence.delta.supports === h.id) return 2.2;
+    if (evidence.delta && evidence.delta.refutes === h.id) return 0.25;
+    return 1.0;
+  }
+
+  _checkFormalGate(querion, evidence) {
+    const top = [...querion.hypotheses].sort((a, b) => b.posterior - a.posterior)[0];
+
+    const missing = [];
+    Object.keys(querion.formalConstraints).forEach(key => {
+      if (querion.violatedConstraints.includes(key)) return; // violated ≠ missing
+      if (!evidence.metadata.invariants || evidence.metadata.invariants[key] !== querion.formalConstraints[key]) {
+        missing.push(key);
+      }
+    });
+
+    if (top.posterior >= 0.88 && missing.length === 0 && querion.violatedConstraints.length === 0) {
+      querion.status = 'VERIFIED_FORMAL';
+      querion.proofStatus = 'VERIFIED';
+      querion.statusReason = 'High belief backed by satisfied formal invariants';
+    } else if (top.posterior >= 0.88 && querion.violatedConstraints.length > 0) {
+      querion.status = 'CONTRADICTED';
+      querion.proofStatus = 'VIOLATED';
+      querion.statusReason = 'Belief high but constraints VIOLATED: ' + querion.violatedConstraints.join(', ');
+      this._spawnResidualQuerion(querion, querion.violatedConstraints);
+    } else if (top.posterior >= 0.88 && missing.length > 0) {
+      querion.status = 'HIGH_BELIEF_UNPROVEN';
+      querion.proofStatus = 'UNPROVEN';
+      querion.statusReason = 'Belief high (' + (top.posterior * 100).toFixed(0) + '%), missing constraints: ' + missing.join(', ');
+      this._spawnResidualQuerion(querion, missing);
+    } else if (top.posterior < 0.12) {
+      querion.status = 'REFUTED';
+      querion.proofStatus = 'REFUTED';
+      querion.statusReason = 'Top hypothesis below 12% — belief collapsed';
+    }
+  }
+
+  _spawnResidualQuerion(parent, constraints) {
+    const exists = Array.from(this.activeQuerions.values())
+      .some(q => q.parentId === parent.id && q.question.includes(constraints[0]));
+    if (exists) return;
+
+    this.raiseQuerion({
+      parentId: parent.id,
+      question: 'Formal Verification: Resolve constraint [' + constraints[0] + '] for ' + parent.id,
+      domain: parent.domain,
+      hypotheses: [
+        { claim: 'Invariant ' + constraints[0] + ' holds under strict isolation', prior: 0.5 },
+        { claim: 'Invariant ' + constraints[0] + ' violated in boundary conditions', prior: 0.5 }
+      ],
+      requiredDeterminations: ['isolate_' + constraints[0]],
+      formalConstraints: { [constraints[0]]: true }
+    });
+  }
+
+  _updateDiscrimination(querion) {
+    const hSorted = [...querion.hypotheses].sort((a, b) => b.posterior - a.posterior);
+    const entropy = -hSorted.reduce((acc, h) => {
+      return h.posterior > 0 ? acc + h.posterior * Math.log2(h.posterior) : acc;
+    }, 0);
+    const hasContradictions = querion.hypotheses.some(h => h.contradictionKeys.length > 0);
+
+    querion.discrimination = {
+      entropy: Number(entropy.toFixed(3)),
+      nextAction: hasContradictions
+        ? 'ADJUDICATE CONTRADICTION: re-observe ' + (this.contradictions[this.contradictions.length - 1]?.key || 'contested variable')
+        : querion.requiredDeterminations.length > 0
+          ? 'Execute Test: [' + querion.requiredDeterminations[0] + ']'
+          : 'Gather unconstrained observation stream',
+      evi: Number((entropy * 0.85).toFixed(3))
+    };
+  }
+
+  toMermaid() {
+    let md = 'graph TD\n';
+    this.activeQuerions.forEach(q => {
+      const label = q.id + '<br/>' + q.status;
+      const color = q.status === 'CONTRADICTED' ? '#ff6b6b'
+                  : q.status === 'VERIFIED_FORMAL' ? '#3fb950'
+                  : q.status === 'REFUTED' ? '#f85149'
+                  : '#58a6ff';
+      md += '  ' + q.id + '("' + label + '"):::' + color + '\n';
+      if (q.parentId) md += '  ' + q.parentId + ' -->|residual| ' + q.id + '\n';
+    });
+    return md;
+  }
+
+  _seed() {
+    this.raiseQuerion({
+      question: 'Is cellular pulse G-12 a period-4 stable oscillator?',
+      domain: 'ca_life',
+      hypotheses: [
+        { claim: 'Period-4 Oscillator', prior: 0.4,
+          predictions: { displacement_x: 0, displacement_y: 0 } },
+        { claim: 'Transient Glider Collision', prior: 0.4,
+          predictions: { displacement_x: 4 } },
+        { claim: 'Chaotic Noise', prior: 0.2 }
+      ],
+      requiredDeterminations: ['check_periodicity_4'],
+      formalConstraints: { invariant_topology: true, displacement_zero: true }
+    });
+  }
+}
+
+/* ── UI Controller ── */
+const engine = new QuerionEngine();
+engine._seed();
+let autoTimer = null;
+
+function renderUI() {
+  // Event log
+  const eventLog = document.getElementById('eventLog');
+  eventLog.innerHTML = '';
+  Array.from(engine.evidenceLedger.values()).slice(-14).reverse().forEach(e => {
+    const card = document.createElement('div');
+    card.className = 'event-card' + (e.contradiction ? ' contra' : '');
+    let detail = '';
+    if (e.contradiction) {
+      detail = '<div class="contra-detail">⚠ ' +
+        e.contradiction.hypothesisId + ' predicts ' + e.contradiction.key + ' = ' + e.contradiction.expected +
+        ' · observed ' + e.contradiction.observed + ' (severity ' + e.contradiction.severity + ')</div>';
+    }
+    card.innerHTML = '<span class="eid">' + e.id + '</span> [' + e.source + '] ' +
+      JSON.stringify(e.delta) + detail;
+    eventLog.appendChild(card);
+  });
+
+  // Querion tree
+  const qTree = document.getElementById('querionTree');
+  qTree.innerHTML = '';
+  let highestEvi = { evi: 0, action: 'No action required' };
+
+  engine.activeQuerions.forEach(q => {
+    if (q.discrimination && q.discrimination.evi > highestEvi.evi) {
+      highestEvi = { evi: q.discrimination.evi, action: q.discrimination.nextAction };
+    }
+    const card = document.createElement('div');
+    card.className = 'querion-card';
+
+    const hypothesesHTML = q.hypotheses.map(h => {
+      const refuted = h.posterior < 0.15;
+      const prov = '<div class="prov">sup: <span class="sup">' +
+        (h.supportKeys.length ? h.supportKeys.slice(-3).join(',') : '—') +
+        '</span> · ref: <span class="ref">' +
+        (h.refuteKeys.length ? h.refuteKeys.slice(-3).join(',') : '—') +
+        '</span>' +
+        (h.contradictionKeys.length ? ' · ⚠contra: <span class="ref">' + h.contradictionKeys.join(',') + '</span>' : '') +
+        '</div>';
+      return '<div class="bar-wrap">' +
+        '<div class="bar-label"><span>' + h.claim + '</span><span>' + (h.posterior * 100).toFixed(1) + '%</span></div>' +
+        '<div class="bar"><div class="bar-fill' + (refuted ? ' refuted-fill' : '') +
+        '" style="width:' + h.posterior * 100 + '%"></div></div>' + prov + '</div>';
+    }).join('');
+
+    card.innerHTML =
+      '<div class="q-header">' +
+        '<span class="q-id">' + q.id + (q.parentId ? ' ↳ (Residual)' : '') + '</span>' +
+        '<span class="status-tag st-' + q.status + '">' + q.status + '</span>' +
+      '</div>' +
+      '<div style="font-weight:600">' + q.question + '</div>' +
+      hypothesesHTML +
+      '<div class="q-footer">' +
+        'Status: ' + (q.statusReason || 'Pending evidence') + '<br/>' +
+        'Proof: ' + q.proofStatus +
+        (q.violatedConstraints.length ? ' · VIOLATED: ' + q.violatedConstraints.join(',') : '') +
+      '</div>';
+    qTree.appendChild(card);
+  });
+
+  // Discrimination
+  document.getElementById('eviAction').textContent = highestEvi.action;
+  document.getElementById('eviVal').textContent = highestEvi.evi.toFixed(3);
+  document.getElementById('qCount').textContent = engine.activeQuerions.size;
+  document.getElementById('eCount').textContent = engine.evidenceLedger.size;
+  document.getElementById('cCount').textContent = engine.contradictions.length;
+
+  // Contradiction feed
+  const cf = document.getElementById('contraFeed');
+  if (engine.contradictions.length === 0) {
+    cf.innerHTML = '<div style="color:var(--dim)">No contradictions detected. Belief and observation agree.</div>';
+  } else {
+    cf.innerHTML = engine.contradictions.slice(-6).reverse().map(c =>
+      '<div class="contra-item">⚠ ' + c.querionId + '/' + c.hypothesisId +
+      ' · ' + c.key + ': expected ' + c.expected + ', observed ' + c.observed +
+      ' · src: ' + c.evidenceId + '</div>'
+    ).join('');
+  }
+}
+
+function injectSyntheticObservation() {
+  const domain = document.getElementById('domainSelect').value;
+  engine.observe({
+    domain, source: 'simulation_stream',
+    delta: { supports: 'H1' },
+    metadata: { invariants: { invariant_topology: true } }
+  });
+  renderUI();
+}
+
+function injectContradiction() {
+  const domain = document.getElementById('domainSelect').value;
+  // Contradictory observation: H1 (Period-4) predicts displacement_x = 0,
+  // but this observation reports displacement_x = +4 — glider displacement!
+  engine.observe({
+    domain, source: 'adversarial_probe',
+    delta: { supports: 'H1', displacement_x: 4 },
+    metadata: { invariants: { invariant_topology: true } }
+  });
+  renderUI();
+}
+
+document.getElementById('injectBtn').onclick = injectSyntheticObservation;
+document.getElementById('contraBtn').onclick = injectContradiction;
+
+document.getElementById('executeEviBtn').onclick = () => {
+  const domain = document.getElementById('domainSelect').value;
+  engine.observe({
+    domain, source: 'targeted_evi_test',
+    delta: { supports: 'H1' },
+    metadata: { invariants: { invariant_topology: true, displacement_zero: true } }
+  });
+  renderUI();
+};
+
+document.getElementById('autoBtn').onclick = (e) => {
+  if (autoTimer) {
+    clearInterval(autoTimer); autoTimer = null;
+    e.target.textContent = '▶ Auto';
+  } else {
+    autoTimer = setInterval(injectSyntheticObservation, 800);
+    e.target.textContent = '⏸ Pause';
+  }
+};
+
+document.getElementById('resetBtn').onclick = () => {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  document.getElementById('autoBtn').textContent = '▶ Auto';
+  engine.reset();
+  renderUI();
+};
+
+document.getElementById('jsonBtn').onclick = () => {
+  document.getElementById('exportBox').textContent = JSON.stringify({
+    querions: Array.from(engine.activeQuerions.values()),
+    contradictions: engine.contradictions,
+    ledgerSize: engine.evidenceLedger.size
+  }, null, 2);
+};
+
+document.getElementById('mermaidBtn').onclick = () => {
+  document.getElementById('exportBox').textContent = engine.toMermaid();
+};
+
+renderUI();
+</script>
+</body>
+</html>
