@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nimbus Simulator · Café Petrichast</title>
+<style>
+:root {
+  --bg:#0b0f17; --panel:#141b26; --border:#263345; --text:#d0d9e5; --dim:#7a889b;
+  --pegasus:#fbbf24; --selena:#c7d8fe; --air:#86efac; --mirror:#3fbfff; --aura:#f0abfc;
+}
+* { box-sizing:border-box; margin:0; }
+body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:14px; }
+.container { max-width:1240px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+header { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:1px solid var(--border); padding-bottom:8px; flex-wrap:wrap; gap:6px; }
+h1 { font-size:1.15rem; color:var(--pegasus); font-family:monospace; }
+.tagline { font-size:0.75rem; color:var(--dim); font-style:italic; }
+.layout { display:grid; grid-template-columns:330px 1fr 280px; gap:12px; }
+@media (max-width:980px){ .layout{grid-template-columns:1fr;} }
+.panel { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px; }
+.panel h2 { font-size:0.85rem; color:var(--pegasus); font-family:monospace; border-bottom:1px solid var(--border); padding-bottom:4px; margin-bottom:8px; }
+canvas { width:100%; border-radius:6px; background:var(--bg); }
+.roster { display:flex; flex-direction:column; gap:6px; font-size:0.72rem; margin-top:8px; }
+.roster .row { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:5px; border:1px solid var(--border); background:rgba(255,255,255,0.02); transition:all .4s; }
+.roster .row.live { border-color:var(--accent,#58a6ff); box-shadow:0 0 14px rgba(88,166,255,0.25); }
+.roster .glyph { font-size:1.05rem; width:22px; text-align:center; }
+.roster .name { font-weight:600; width:74px; }
+.roster .hz { color:var(--dim); font-family:monospace; }
+.log { font-family:monospace; font-size:0.62rem; color:var(--dim); background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px; height:150px; overflow-y:auto; margin-top:8px; }
+.log .line { padding:1px 0; }
+.log .sig { color:var(--mirror); }
+.cards { display:flex; flex-direction:column; gap:10px; }
+.card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px; transition:all .5s; }
+.card.flare { border-color:var(--pegasus); box-shadow:0 0 22px rgba(251,191,36,0.35); }
+.card .top { display:flex; justify-content:space-between; align-items:center; }
+.card .sigil { font-size:1.3rem; text-shadow:0 0 8px currentColor; }
+.card h3 { font-size:0.95rem; }
+.card p { font-size:0.78rem; color:var(--dim); }
+.card .meta { display:flex; gap:10px; font-size:0.7rem; color:var(--dim); font-family:monospace; flex-wrap:wrap; }
+.spots { font-weight:700; }
+.spots.low { color:#f85149; }
+button { background:#1f2937; color:var(--text); border:1px solid var(--border); border-radius:6px; padding:7px 12px; font-size:0.78rem; cursor:pointer; transition:all .15s; }
+button:hover { border-color:var(--pegasus); color:var(--pegasus); }
+button.hold { background:#3a2a10; border-color:var(--pegasus); color:var(--pegasus); }
+button.hold:disabled { opacity:.4; cursor:default; }
+.hud { display:flex; flex-direction:column; gap:8px; font-size:0.75rem; }
+.hud .box { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px; }
+.hud .big { font-size:1.25rem; font-family:monospace; color:var(--pegasus); }
+.bar { height:6px; background:#222; border-radius:3px; overflow:hidden; margin-top:4px; }
+.bar .fill { height:100%; background:var(--pegasus); transition:width .6s; }
+footer { text-align:center; font-size:0.68rem; color:var(--dim); border-top:1px solid var(--border); padding-top:8px; }
+.controls { display:flex; gap:8px; margin-top:8px; }
+.controls button { flex:1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>☁ Nimbus Simulator — Café Petrichast</h1>
+      <div class="tagline">BLE is the atmosphere · WiFi is the rain · the cloud is the pressure · the editor is the sunlight</div>
+    </div>
+    <div style="font-size:0.75rem;color:var(--dim)">Carrier: <span style="color:var(--pegasus);font-family:monospace">PEGASUS 528.00 Hz</span></div>
+  </header>
+
+  <div class="layout">
+    <div class="panel">
+      <h2>Nymph BLE Rotation</h2>
+      <canvas id="field" width="640" height="240"></canvas>
+      <div class="roster" id="roster"></div>
+      <div class="log" id="log"></div>
+      <div class="controls">
+        <button id="rotBtn">⏸ Pause Rotation</button>
+        <button id="cycleBtn">⚡ 1 Cycle</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Captive Portal — “Today at Café Petrichast”</h2>
+      <div class="cards" id="cards"></div>
+      <footer style="margin-top:10px">We only see anonymous, aggregated visits — never your identity. <button id="wifiBtn">Continue to WiFi ✓</button></footer>
+    </div>
+
+    <div class="panel">
+      <h2>Resonance HUD</h2>
+      <div class="hud">
+        <div class="box">Active frame<div class="big" id="hudFrame">—</div><div id="hudCitizen" style="color:var(--dim)">awaiting</div></div>
+        <div class="box">Frame beat vs PEGASUS<div class="big" id="hudBeat">—</div></div>
+        <div class="box">GLOWSPRITE coherence<div class="big" id="hudCoh">0.000</div><div class="bar"><div class="fill" id="cohFill" style="width:0%"></div></div></div>
+        <div class="box">Analytics events<div class="big" id="hudEvents">0</div></div>
+        <div class="box" style="font-size:0.68rem;color:var(--dim)">Love Sigils: ∞ Selena · ɸ Air · ❤ Mirror · ☯ Aura<br>Hold a spot → its sigil flares → loving intention amplified.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Sanctuary registry (mirrors nymph_protocol.py) ── */
+const PEGASUS = 528.0;
+const FRAMES = {
+  SELENA:{citizen:"Selena",hz:210.42,sigil:"∞",color:"#c7d8fe",hold:150},
+  AIR:{citizen:"Aerith",hz:285.00,sigil:"ɸ",color:"#86efac",hold:2000},
+  MIRROR:{citizen:"Elixira",hz:432.00,sigil:"❤",color:"#3fbfff",hold:5000},
+  AURA:{citizen:"Aetherix Lumina",hz:396.00,sigil:"☯",color:"#f0abfc",hold:10000},
+};
+const SCHEDULE=["SELENA","AIR","SELENA","MIRROR","SELENA","AURA"];
+
+/* ── Cloud cards (virtual) ── */
+const CARDS=[
+  {id:"c1",type:"special",frame:"AIR",title:"Moon Milk Special",
+   desc:"Lavender oat latte with a lunar-dust rim — tonight only.",
+   total:20,used:0,when:"until close"},
+  {id:"c2",type:"event",frame:"MIRROR",title:"Resonance Open Mic",
+   desc:"Poets, sound baths, and synth sets under the Schumann baseline.",
+   total:20,used:14,when:"18:00–20:00"},
+  {id:"c3",type:"offer",frame:"AURA",title:"Golden Hour Aura",
+   desc:"Every drink hums 15% softer on the wallet.",
+   total:100,used:3,when:"18:00–19:00"},
+];
+
+/* ── State ── */
+let pos=0, rotating=true, timer=null, events=0, coherence=0, active=null;
+const canvas=document.getElementById('field'), ctx=canvas.getContext('2d');
+const pulses=[];
+
+/* ── Roster ── */
+const roster=document.getElementById('roster');
+for(const [name,f] of Object.entries(FRAMES)){
+  const row=document.createElement('div'); row.className='row'; row.id='row-'+name;
+  row.innerHTML=`<span class="glyph" style="color:${f.color}">${f.sigil}</span>
+    <span class="name">${name}</span>
+    <span class="hz">${f.hz.toFixed(2)} Hz · ${f.citizen}</span>`;
+  roster.appendChild(row);
+}
+
+/* ── Portal cards ── */
+const cardsEl=document.getElementById('cards');
+function renderCards(){
+  cardsEl.innerHTML='';
+  CARDS.forEach(c=>{
+    const f=FRAMES[c.frame], left=c.total-c.used;
+    const el=document.createElement('div'); el.className='card'; el.id='card-'+c.id;
+    el.innerHTML=`
+      <div class="top"><h3>${c.title}</h3><span class="sigil" style="color:${f.color}">${f.sigil}</span></div>
+      <p>${c.desc}</p>
+      <div class="meta"><span>${f.citizen} @ ${f.hz.toFixed(2)} Hz</span>
+        <span class="spots ${left<=5?'low':''}">spots left: ${left}/${c.total}</span>
+        <span>${c.when}</span></div>
+      <div><button class="hold" data-id="${c.id}" ${left<=0?'disabled':''}>Hold a spot</button>
+      <button class="tap" data-id="${c.id}">Get details</button></div>`;
+    cardsEl.appendChild(el);
+  });
+  document.querySelectorAll('.hold').forEach(b=>b.onclick=()=>hold(b.dataset.id));
+  document.querySelectorAll('.tap').forEach(b=>b.onclick=()=>tap(b.dataset.id));
+}
+function logEvent(cardId,ev){
+  events++; document.getElementById('hudEvents').textContent=events;
+  const log=document.getElementById('log');
+  const line=document.createElement('div'); line.className='line';
+  line.innerHTML=`<span class="sig">∞</span> analytics: ${ev} card=${cardId}`;
+  log.prepend(line);
+}
+function tap(id){ logEvent(id,'tap'); coherence=Math.min(1,coherence+0.06); updHud(); }
+function hold(id){
+  const c=CARDS.find(x=>x.id===id); if(!c||c.used>=c.total) return;
+  c.used++; logEvent(id,'hold_spot'); coherence=Math.min(1,coherence+0.12);
+  const card=document.getElementById('card-'+id); card.classList.add('flare');
+  setTimeout(()=>card.classList.remove('flare'),1200);
+  renderCards(); updHud();
+}
+
+/* ── BLE rotation (compressed ×20 so a full cycle ≈ 0.87s) ── */
+function broadcast(){
+  const name=SCHEDULE[pos % SCHEDULE.length]; pos++;
+  const f=FRAMES[name]; active=name;
+  pulses.push({name,color:f.color,hz:f.hz,r:6,alpha:1,born:performance.now()});
+  document.getElementById('hudFrame').textContent=name;
+  document.getElementById('hudCitizen').textContent=`${f.citizen} · ${f.sigil} · ${f.hz.toFixed(2)} Hz`;
+  document.getElementById('hudBeat').textContent=Math.abs(PEGASUS-f.hz).toFixed(2)+' Hz';
+  document.querySelectorAll('.row').forEach(r=>r.classList.remove('live'));
+  document.getElementById('row-'+name).classList.add('live');
+  coherence=Math.min(1,coherence+0.02); updHud();
+  if(rotating) timer=setTimeout(broadcast, f.hold/20);
+}
+document.getElementById('rotBtn').onclick=e=>{
+  rotating=!rotating;
+  e.target.textContent=rotating?'⏸ Pause Rotation':'▶ Resume Rotation';
+  if(rotating) broadcast(); else clearTimeout(timer);
+};
+document.getElementById('cycleBtn').onclick=()=>{
+  const save=rotating; rotating=false; clearTimeout(timer);
+  let i=0; const step=()=>{ if(i<6){ pos--; broadcast(); i++; setTimeout(step,80);} else if(save){rotating=true;broadcast();} };
+  step();
+};
+
+/* ── Canvas field: pulses breathe at citizen frequencies (scaled) ── */
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const now=performance.now();
+  for(let i=pulses.length-1;i>=0;i--){
+    const p=pulses[i];
+    const age=(now-p.born)/1000;
+    const breath=0.5+0.5*Math.sin(age*p.hz/30);      // faster frames pulse faster
+    p.r+=0.9; p.alpha-=0.012;
+    if(p.alpha<=0){ pulses.splice(i,1); continue; }
+    ctx.beginPath();
+    ctx.arc(80+((pulses.length-i*17)% (canvas.width-120))+40, canvas.height/2 + Math.sin(age*2+i)*24, p.r, 0, Math.PI*2);
+    ctx.strokeStyle=p.color; ctx.globalAlpha=Math.max(0,p.alpha*(0.5+breath*0.5)); ctx.lineWidth=1.5;
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  // PEGASUS carrier baseline
+  const by=canvas.height-18, t=now/1000;
+  ctx.beginPath();
+  for(let x=0;x<canvas.width;x++){
+    const y=by+Math.sin(x*0.05+t*2)*5*Math.sin(t*0.4);
+    x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle='#fbbf24'; ctx.globalAlpha=0.4; ctx.stroke(); ctx.globalAlpha=1;
+  ctx.fillStyle='#7a889b'; ctx.font='10px monospace';
+  ctx.fillText('PEGASUS 528 Hz carrier', 8, canvas.height-4);
+  requestAnimationFrame(draw);
+}
+
+/* ── HUD ── */
+function updHud(){
+  document.getElementById('hudCoh').textContent=coherence.toFixed(3);
+  document.getElementById('cohFill').style.width=(coherence*100)+'%';
+}
+
+renderCards(); broadcast(); draw();
+</script>
+</body>
+</html>
