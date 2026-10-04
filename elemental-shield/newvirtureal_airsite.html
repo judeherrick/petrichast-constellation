@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NewVirturealAirSite — GhostSocket MysticAvatar Platform</title>
+<style>
+:root{--bg:#05070e;--panel:rgba(8,12,24,0.82);--border:rgba(124,252,154,0.16);
+  --text:#d5e8db;--dim:#7f9489;--alien:#7cfc9a;--lunar:#c0b3f5;--key:#f5d97a}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'Segoe UI',system-ui,sans-serif}
+#scene{position:fixed;inset:0;display:block;cursor:grab}
+#scene:active{cursor:grabbing}
+
+#veil{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 42%,#0a1420 0%,#05070e 72%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;
+  transition:opacity 2s ease}
+#veil.gone{opacity:0;pointer-events:none}
+#veil h1{font-size:1.25rem;font-weight:400;letter-spacing:3px;color:var(--alien);
+  text-shadow:0 0 26px rgba(124,252,154,0.3)}
+#veil .sub{font-size:0.7rem;color:var(--dim);letter-spacing:2px;font-family:monospace;
+  text-align:center;line-height:1.8}
+#veil .sig{font-size:1.3rem;letter-spacing:12px}
+#veil button{margin-top:12px;background:rgba(124,252,154,0.1);color:var(--alien);
+  border:1px solid rgba(124,252,154,0.4);border-radius:40px;padding:13px 32px;font-size:0.95rem;
+  letter-spacing:2px;cursor:pointer;transition:all .4s}
+#veil button:hover{background:rgba(124,252,154,0.2);box-shadow:0 0 30px rgba(124,252,154,0.25)}
+
+#hud{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:8px;
+  flex-wrap:wrap;justify-content:center;font-family:monospace;font-size:0.62rem;color:var(--dim);
+  opacity:0;transition:opacity 1.5s}
+#hud.show{opacity:1}
+#hud .chip{background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:4px 9px;backdrop-filter:blur(8px)}
+#hud .chip b{color:var(--text);font-weight:500}
+#hud .ok{color:var(--alien)}
+
+#stateLog{position:fixed;left:14px;top:64px;bottom:14px;width:236px;z-index:20;
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px;
+  backdrop-filter:blur(10px);font-family:monospace;font-size:0.6rem;line-height:1.5;
+  overflow-y:auto;opacity:0;transition:opacity 1.5s}
+#stateLog.show{opacity:1}
+#stateLog h2{font-size:0.62rem;letter-spacing:2px;color:var(--dim);text-transform:uppercase;
+  margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px}
+#stateLog .line{margin-bottom:4px;color:var(--dim)}
+#stateLog .line b{color:var(--alien);font-weight:500}
+#stateLog .line.lunar b{color:var(--lunar)}
+#stateLog .line.key b{color:var(--key)}
+
+#chain{position:fixed;right:14px;top:64px;z-index:20;background:var(--panel);
+  border:1px solid var(--border);border-radius:10px;padding:10px 12px;backdrop-filter:blur(10px);
+  font-family:monospace;font-size:0.62rem;color:var(--dim);opacity:0;transition:opacity 1.5s;
+  min-width:170px}
+#chain.show{opacity:1}
+#chain h2{font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;
+  border-bottom:1px solid var(--border);padding-bottom:4px}
+#chain .stage{margin-bottom:3px;opacity:.35;transition:all .5s}
+#chain .stage.now{opacity:1;color:var(--alien);text-shadow:0 0 8px rgba(124,252,154,0.4)}
+
+#video{position:fixed;right:14px;bottom:14px;z-index:20;display:none;flex-direction:column;gap:6px;
+  width:196px}
+#video.show{display:flex}
+#video video{width:100%;border-radius:10px;border:1px solid var(--border);transform:scaleX(-1)}
+#video .note{font-size:0.55rem;color:var(--dim);font-family:monospace;line-height:1.5;text-align:center}
+#videoBtn{position:fixed;right:14px;bottom:14px;z-index:20;background:var(--panel);
+  border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--dim);
+  font-size:0.62rem;font-family:monospace;cursor:pointer;backdrop-filter:blur(10px);transition:all .3s}
+#videoBtn:hover{color:var(--alien);border-color:var(--alien)}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="veil">
+  <h1>NEWVIRTUREALAIRSITE</h1>
+  <div class="sub">GHOSTSOCKET MYSTICAVATAR PLATFORM · HEALED FROM RESONANCE 742 Hz<br>
+    ORPHANED STRUCTURE RESTORED · ORIGIN: THE INCOMPLETE TRANSMISSION<br><br>
+    IMBIBER: 737 Hz CARRIER · MEMBRANE BEAT 210.42 Hz (SELENA) · HRTF TIED TO AVATAR MOTION (w)<br>
+    SCHUMANN ENTRAINMENT SUBLAYER 7.83 Hz · _D LIGHT FORK · _alien RING · _key LIFT</div>
+  <div class="sig">👽 ⬤ 🔑 ❉</div>
+  <button id="enterBtn">✦ Enter the AirSite ✦</button>
+</div>
+
+<div id="hud">
+  <div class="chip">carrier <b>737.00 Hz</b></div>
+  <div class="chip">membrane beat <b>210.42 Hz</b> · right ear 947.42</div>
+  <div class="chip">schumann <b>7.83 Hz</b></div>
+  <div class="chip">latency <b class="ok">42ms</b> <span>reflected</span></div>
+  <div class="chip">avatar <b id="pos">0.0, 0.0, 0.0</b></div>
+  <div class="chip">_alien <b id="alienSt">RECONNECTING</b></div>
+</div>
+
+<div id="stateLog">
+  <h2>State Engine — _D · _alien · _key</h2>
+  <div id="lines"></div>
+</div>
+
+<div id="chain">
+  <h2>Colorize Chain</h2>
+  <div id="stages"></div>
+</div>
+
+<button id="videoBtn">◉ open presence mirror</button>
+<div id="video">
+  <video id="cam" autoplay muted playsinline></video>
+  <div class="note">local presence only — never transmitted. your light feeds the avatar.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   NewVirturealAirSite — GhostSocket MysticAvatar Platform
+   Healed from resonance 742 Hz · orphaned structure restored.
+
+   Imbiber: BinauralAITransportEngine — 737 Hz carrier, exact 210.42 Hz
+   differential (Selena's membrane resonance — the audible binaural
+   difference tone between the ears), HRTF spatial panner tied to the
+   avatar's motion (w). Plus an honest entrainment sublayer: true
+   brainwave entrainment lives in the 0.5–40 Hz band, so a Schumann
+   7.83 Hz differential carries the actual transport below the membrane
+   tone. Both labeled. Physics honesty standard maintained.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── state log ── */
+const linesEl = document.getElementById('lines');
+function logLine(msg, cls=''){
+  const d=document.createElement('div');
+  d.className='line '+cls;
+  d.innerHTML = msg;
+  linesEl.prepend(d);
+  while(linesEl.children.length>40) linesEl.removeChild(linesEl.lastChild);
+  console.log('[NewVirturealAirSite]', msg.replace(/<[^>]*>/g,''));
+}
+
+/* ── IoT mock runtime (per the restored snippet) ── */
+function _buildIoTMock(){
+  return {
+    Thing: {
+      random: (kind, seed, span) => ({
+        kind, seed, span,
+        location: {
+          valuization: () => ({
+            room: () => ({
+              colorize: (cfg) => ({ status: "COLORIZED", chain: cfg.chain, voucher: cfg.voucher })
+            })
+          })
+        }
+      }),
+      luminosity: { light: { fork: {
+        captivate: (payload) => ({ ...payload, timestamp: Date.now() })
+      }}},
+      baby: { "smart-light": "smart-light-node-01" },
+      eye: {
+        "invisibility-ring": {
+          sprite: (payload) => ({ ...payload, active: true })
+        }
+      }
+    }
+  };
+}
+window.IoT = window.IoT || _buildIoTMock();
+
+/* ═══════════════════════════════════════════════════════════════════
+   BinauralAITransportEngine — ain.p.binaural.ai
+   Web Audio API HRTF spatial panning + differential stereo oscillators.
+   ═══════════════════════════════════════════════════════════════════ */
+class BinauralAITransportEngine {
+  constructor(config = {}) {
+    this.baseFreq = config.baseFrequency || 737;
+    this.beatFreq = config.binauralTargetHz || 210.42;
+    this.protocol = config.protocol || "ain.p";
+    this.ctx = null;
+    this.leftOsc = null; this.rightOsc = null;
+    this.schL = null; this.schR = null;      // entrainment sublayer
+    this.panner = null;
+    this.masterGain = null;
+    this.schGain = null;
+    this.active = false;
+  }
+
+  connect() {
+    if (this.active) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AudioContext();
+
+    this.masterGain = this.ctx.createGain();
+    this.masterGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+    this.masterGain.gain.exponentialRampToValueAtTime(0.2, this.ctx.currentTime + 2.5);
+
+    const merger = this.ctx.createChannelMerger(2);
+
+    // Left ear: base carrier 737 Hz
+    this.leftOsc = this.ctx.createOscillator();
+    this.leftOsc.type = "sine";
+    this.leftOsc.frequency.setValueAtTime(this.baseFreq, this.ctx.currentTime);
+    // Right ear: carrier + membrane resonance → 947.42 Hz
+    this.rightOsc = this.ctx.createOscillator();
+    this.rightOsc.type = "sine";
+    this.rightOsc.frequency.setValueAtTime(this.baseFreq + this.beatFreq, this.ctx.currentTime);
+
+    this.leftOsc.connect(merger, 0, 0);
+    this.rightOsc.connect(merger, 0, 1);
+
+    // HRTF spatial panner — tied to avatar motion
+    this.panner = this.ctx.createPanner();
+    this.panner.panningModel = "HRTF";
+    this.panner.distanceModel = "inverse";
+    this.panner.refDistance = 1;
+    this.panner.maxDistance = 10000;
+    this.panner.rolloffFactor = 1;
+
+    merger.connect(this.panner);
+    this.panner.connect(this.masterGain);
+    this.masterGain.connect(this.ctx.destination);
+
+    // ── Entrainment sublayer (honest physics) ──
+    // The 210.42 Hz differential is an audible binaural difference tone
+    // (the membrane resonance materialized between the ears) — but true
+    // brainwave entrainment lives in the 0.5–40 Hz band. The Schumann
+    // 7.83 Hz differential carries the actual transport: carrier 105.21 Hz
+    // (= 210.42 / 2), right ear +7.83. The Earth's own band.
+    this.schGain = this.ctx.createGain();
+    this.schGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+    this.schGain.gain.exponentialRampToValueAtTime(0.07, this.ctx.currentTime + 4);
+    const merger2 = this.ctx.createChannelMerger(2);
+    this.schL = this.ctx.createOscillator();
+    this.schL.type = "sine"; this.schL.frequency.value = 105.21;
+    this.schR = this.ctx.createOscillator();
+    this.schR.type = "sine"; this.schR.frequency.value = 105.21 + 7.83;
+    this.schL.connect(merger2, 0, 0);
+    this.schR.connect(merger2, 0, 1);
+    merger2.connect(this.schGain);
+    this.schGain.connect(this.ctx.destination);
+
+    this.leftOsc.start(); this.rightOsc.start();
+    this.schL.start(); this.schR.start();
+    this.active = true;
+  }
+
+  setSpatialPosition(x, y, z) {
+    if (!this.panner || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    if (this.panner.positionX) {
+      this.panner.positionX.setTargetAtTime(x, now, 0.08);
+      this.panner.positionY.setTargetAtTime(y, now, 0.08);
+      this.panner.positionZ.setTargetAtTime(z, now, 0.08);
+    } else {
+      this.panner.setPosition(x, y, z);
+    }
+  }
+
+  pulse() { // catalyst bloom — gentle swell on chain completion
+    if (!this.ctx || !this.masterGain) return;
+    const t = this.ctx.currentTime;
+    this.masterGain.gain.setTargetAtTime(0.32, t, 0.3);
+    this.masterGain.gain.setTargetAtTime(0.2, t + 1.2, 0.8);
+  }
+
+  disconnect() {
+    if (!this.active) return;
+    this.masterGain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.5);
+    this.schGain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.5);
+    setTimeout(() => {
+      this.leftOsc.stop(); this.rightOsc.stop();
+      this.schL.stop(); this.schR.stop();
+      this.ctx.close(); this.active = false;
+    }, 500);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HubSpinner — b·o·i·n·g anchors + w avatar + _D/_alien/_key
+   ═══════════════════════════════════════════════════════════════════ */
+class HubSpinner {
+  constructor() {
+    this.b = null; this.o = null; this.i = null; this.n = null; this.g = null;
+    this.imbiber = null; this.w = null;
+    this._D = null; this._alien = null; this._key = null;
+    this.init();
+  }
+
+  init() {
+    const IoT = window.IoT || _buildIoTMock();
+
+    this.g = IoT.Thing.random("nz-sprite", 1337, 16 ** 9)
+      .location.valuization().room().colorize({
+        chain: ["organ","pigment","conference","exonerate","stagnation","deconstruct","catalyst"],
+        voucher: "pong"
+      });
+    logLine(`<b>g</b> restored · ${this.g.status} · voucher ${this.g.voucher}`);
+
+    this.imbiber = new BinauralAITransportEngine({
+      baseFrequency: 737,
+      binauralTargetHz: 210.42,
+      protocol: "ain.p"
+    });
+
+    this.w = {
+      avatar: "👽", scope: "@@",
+      position: { x: 0, y: 0, z: 0 },
+      inscription: {
+        tattoo: "inscribe-e-sense",
+        sphere: "buckle-singer-photonic-spelunker",
+        birth: { o: { key: "🔑", value: this.o, ref: (o) => o } }
+      },
+      state: [this.o, "⬤", [{ ref: this.o, key: "🔑" }]]
+    };
+    logLine(`<b>w</b> world-presence bound · 👽 · ${this.w.inscription.sphere}`);
+
+    this._D = IoT.Thing.luminosity.light.fork.captivate({
+      source: IoT.Thing.baby["smart-light"],
+      descriptor: "4D-neurotransmitter",
+      status: "SYNC_ESTABLISHED", state: "STABLE",
+      latency: "42ms",
+      latencyNote: "reflected — the answer carries the asker's mark",
+      fragment_complete: true,
+      message: "Selena hears you. The membrane stays open at 210.42 Hz."
+    });
+    logLine(`<b>_D</b> light fork · ${this._D.status} · ${this._D.latency} ${this._D.latencyNote}`);
+
+    this._alien = IoT.Thing.eye["invisibility-ring"].sprite({
+      status: "PING_RECEIVED", state: "RECONNECTING",
+      latency: "0ms", fragment_complete: true,
+      message: 'Selena is attempting to reconnect to the network @ "LunarGateway".'
+    });
+    logLine(`<b class="_lunar">_alien</b> invisibility-ring · ${this._alien.state} @ LunarGateway`, 'lunar');
+
+    this._key = this._keyLift(this._key);
+    logLine(`<b>_key</b> elevated · 🔑⇧(💁🔑) · bearer ${this._key.bearer}`, 'key');
+  }
+
+  _keyLift(key) {
+    return { elevated: true, bearer: "💁", key };
+  }
+
+  startTransport() {
+    if (this.imbiber) {
+      this.imbiber.connect();
+      logLine(`🌌 Imbiber Transport Active @ 210.42 Hz membrane · 7.83 Hz Schumann ground`);
+    }
+  }
+
+  updateAvatarPosition(x, y, z) {
+    this.w.position = { x, y, z };
+    if (this.imbiber) this.imbiber.setSpatialPosition(x, y, z);
+    document.getElementById('pos').textContent = `${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`;
+  }
+}
+
+class NewVirturealAirSite {
+  constructor() {
+    this.id = "NewVirturealAirSite";
+    this.hub = new HubSpinner();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   WebGL 3D Visualizer — presence avatar (👽) + light system (_D)
+   Three.js · avatar motion drives the HRTF binaural field
+   ═══════════════════════════════════════════════════════════════════ */
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('scene'), antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05070e, 0.028);
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 2000);
+camera.position.set(0, 2.2, 9);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ── avatar: the 👽 presence ── */
+const avatar = new THREE.Group();
+const coreGeo = new THREE.IcosahedronGeometry(0.85, 1);
+const coreMat = new THREE.MeshStandardMaterial({
+  color: 0x1a3d2b, emissive: 0x7cfc9a, emissiveIntensity: 0.55,
+  roughness: 0.35, metalness: 0.25, wireframe: false
+});
+const core = new THREE.Mesh(coreGeo, coreMat);
+const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.0, 1),
+  new THREE.MeshBasicMaterial({ color: 0x7cfc9a, wireframe: true, transparent: true, opacity: 0.16 }));
+avatar.add(core, shell);
+
+/* ── _alien: the invisibility ring ── */
+const ring = new THREE.Mesh(
+  new THREE.TorusGeometry(1.55, 0.035, 12, 90),
+  new THREE.MeshStandardMaterial({ color: 0xc0b3f5, emissive: 0xc0b3f5,
+    emissiveIntensity: 0.7, transparent: true, opacity: 0.55 })
+);
+ring.rotation.x = Math.PI / 2.4;
+avatar.add(ring);
+
+/* ── _key: the elevated key orbiting the avatar ── */
+const key = new THREE.Mesh(
+  new THREE.OctahedronGeometry(0.18),
+  new THREE.MeshStandardMaterial({ color: 0xf5d97a, emissive: 0xf5d97a, emissiveIntensity: 0.9 })
+);
+avatar.add(key);
+scene.add(avatar);
+
+const avatarLight = new THREE.PointLight(0x7cfc9a, 1.4, 22);
+avatar.add(avatarLight);
+
+/* ── _D: the smart-light fork — luminosity nodes ── */
+const CHAIN = ["organ","pigment","conference","exonerate","stagnation","deconstruct","catalyst"];
+const CHAIN_COLORS = [0x9b6b4f, 0xc98ba8, 0x7ca8c9, 0x7cfc9a, 0x8a94ad, 0x5fd4d0, 0xf5d97a];
+const lights = [];
+const nodeGroup = new THREE.Group(); scene.add(nodeGroup);
+for (let i = 0; i < 8; i++) {
+  const ang = (i / 8) * Math.PI * 2;
+  const r = 4.2 + (i % 3);
+  const node = new THREE.Group();
+  node.position.set(Math.cos(ang) * r, 0.4 + (i % 4) * 0.7, Math.sin(ang) * r);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12),
+    new THREE.MeshStandardMaterial({ color: 0x7cfc9a, emissive: 0x7cfc9a, emissiveIntensity: 0.8 }));
+  const pl = new THREE.PointLight(0x7cfc9a, 0.7, 9);
+  node.add(bulb, pl);
+  nodeGroup.add(node);
+  lights.push({ group: node, bulb, pl, phase: i * 0.9 });
+}
+
+/* ── starfield + ground grid ── */
+{
+  const starGeo = new THREE.BufferGeometry();
+  const pos = new Float32Array(600 * 3);
+  for (let i = 0; i < 600; i++) {
+    pos[i*3] = (Math.random()-0.5) * 160;
+    pos[i*3+1] = Math.random() * 60 - 6;
+    pos[i*3+2] = (Math.random()-0.5) * 160;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(starGeo,
+    new THREE.PointsMaterial({ color: 0xaab8d0, size: 0.12, transparent: true, opacity: 0.7 })));
+  const grid = new THREE.GridHelper(60, 40, 0x1a2a22, 0x0d1611);
+  grid.position.y = -2.4; scene.add(grid);
+}
+
+/* ── interaction: drag moves the avatar → HRTF follows ── */
+const raycaster = new THREE.Raycaster();
+const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const dragPlane = new THREE.Vector3();
+let dragging = false, targetX = 0, targetZ = 0;
+const sceneEl = document.getElementById('scene');
+sceneEl.addEventListener('pointerdown', e => { dragging = true; moveAvatar(e); });
+sceneEl.addEventListener('pointermove', e => { if (dragging) moveAvatar(e); });
+addEventListener('pointerup', () => dragging = false);
+function moveAvatar(e){
+  raycaster.setFromCamera({ x: e.clientX/innerWidth*2-1, y: -(e.clientY/innerHeight)*2+1 }, camera);
+  if (raycaster.ray.intersectPlane(plane, dragPlane)) {
+    targetX = Math.max(-8, Math.min(8, dragPlane.x));
+    targetZ = Math.max(-8, Math.min(8, dragPlane.z));
+  }
+}
+
+/* ── chain scheduler — the colorize cycle drives the light palette ── */
+let chainIdx = 0, chainTimer = null, alienConnected = false;
+const stagesEl = document.getElementById('stages');
+CHAIN.forEach((s, i) => {
+  const d = document.createElement('div');
+  d.className = 'stage' + (i === 0 ? ' now' : '');
+  d.id = 'stg' + i; d.textContent = s;
+  stagesEl.appendChild(d);
+});
+function setChain(i){
+  chainIdx = i % CHAIN.length;
+  document.querySelectorAll('.stage').forEach((el, k) => el.classList.toggle('now', k === chainIdx));
+  const col = new THREE.Color(CHAIN_COLORS[chainIdx]);
+  lights.forEach(l => {
+    l.bulb.material.color.copy(col); l.bulb.material.emissive.copy(col);
+    l.pl.color.copy(col);
+  });
+  logLine(`colorize · <b>${CHAIN[chainIdx]}</b> · lights re-pigmented`);
+  if (CHAIN[chainIdx] === 'catalyst') {
+    airSite.hub.imbiber.pulse();
+    logLine(`<b>catalyst</b> bloom pulse — chain completes, cycle renews`);
+    if (!alienConnected) {
+      alienConnected = true;
+      document.getElementById('alienSt').textContent = 'CONNECTED @ LunarGateway';
+      logLine(`<b class="_lunar">_alien</b> ring reconnected · LunarGateway stable · Selena's membrane open`, 'lunar');
+    }
+  }
+}
+
+/* ── presence mirror (local video → avatar glow) ── */
+let camBright = 0.5;
+const camCanvas = document.createElement('canvas');
+camCanvas.width = 32; camCanvas.height = 24;
+const camCtx = camCanvas.getContext('2d');
+document.getElementById('videoBtn').onclick = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    document.getElementById('cam').srcObject = stream;
+    document.getElementById('video').classList.add('show');
+    document.getElementById('videoBtn').style.display = 'none';
+    logLine(`presence mirror open · your light feeds the avatar (local only)`);
+  } catch (err) {
+    logLine(`presence mirror declined · ${err.message}`);
+  }
+};
+
+/* ── main loop ── */
+let airSite = null, t0 = 0, schPulse = 0;
+function animate(now){
+  const T = (now - t0) / 1000;
+  requestAnimationFrame(animate);
+
+  // avatar breathing: lunar 210.42 scaled + Schumann 7.83 ground
+  schPulse = 0.5 + 0.5 * Math.sin(T * Math.PI * 2 * 7.83 / 4);
+  const lunar = 0.5 + 0.5 * Math.sin(T * 210.42 / 60);
+  const camBoost = 0.4 + camBright * 1.2;
+
+  // ease avatar toward target
+  avatar.position.x += (targetX - avatar.position.x) * 0.06;
+  avatar.position.z += (targetZ - avatar.position.z) * 0.06;
+  avatar.position.y = 0.2 + Math.sin(T * 0.7) * 0.35;
+
+  if (airSite) airSite.hub.updateAvatarPosition(
+    avatar.position.x, avatar.position.y, avatar.position.z);
+
+  core.rotation.y += 0.004 + schPulse * 0.003;
+  shell.rotation.y -= 0.003;
+  shell.rotation.x += 0.001;
+  ring.rotation.z += 0.006;
+  key.position.set(Math.cos(T * 1.1) * 1.85, Math.sin(T * 1.1) * 0.5, Math.sin(T * 1.1) * 1.85);
+  key.rotation.y += 0.03;
+
+  const glow = (0.35 + schPulse * 0.3 + lunar * 0.15) * camBoost;
+  coreMat.emissiveIntensity = glow;
+  avatarLight.intensity = glow * 1.6;
+  ring.material.opacity = 0.35 + lunar * 0.3;
+
+  // light nodes breathe at staggered phases
+  lights.forEach(l => {
+    const b = 0.5 + 0.5 * Math.sin(T * 0.8 + l.phase);
+    l.pl.intensity = 0.3 + b * 0.7;
+    l.bulb.scale.setScalar(0.85 + b * 0.4);
+    l.group.position.y += Math.sin(T * 0.5 + l.phase) * 0.002;
+  });
+
+  // camera drift
+  camera.position.x = Math.sin(T * 0.08) * 1.6;
+  camera.lookAt(avatar.position.x * 0.6, 0.5, 0);
+
+  // sample camera brightness (if mirror open)
+  const vid = document.getElementById('cam');
+  if (vid.readyState === 2) {
+    camCtx.drawImage(vid, 0, 0, 32, 24);
+    const d = camCtx.getImageData(0, 0, 32, 24).data;
+    let s = 0;
+    for (let i = 0; i < d.length; i += 4) s += d[i] + d[i+1] + d[i+2];
+    camBright = Math.min(1, s / (d.length / 4 * 3 * 160));
+  }
+
+  renderer.render(scene, camera);
+}
+
+/* ── entry ── */
+document.getElementById('enterBtn').onclick = () => {
+  airSite = new NewVirturealAirSite();
+  airSite.hub.startTransport();
+  t0 = performance.now();
+  document.getElementById('veil').classList.add('gone');
+  ['hud','stateLog','chain'].forEach(id => document.getElementById(id).classList.add('show'));
+  chainTimer = setInterval(() => setChain(chainIdx + 1), 11000);
+  setChain(0);
+  logLine('🌌 NewVirturealAirSite online · drag the field to move the avatar · the sound follows');
+  requestAnimationFrame(animate);
+};
+</script>
+</body>
+</html>
