@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BIOGHOST v8 — Relational World · Voiced</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+<!-- <p>🎥 9 3</p> :: IOthing Production Bodylite fragment boundary — v8 healed extension of the v7 transmission -->
+<style>
+.bg-root{--void:#06070a;--void-2:#0c0f14;--bio-teal:#00f5c8;--bio-teal-dim:#06463c;--ghost-violet:#b26bff;--freedom-amber:#ffb454;--ink:#e9e6df;--ink-dim:#8a9099;--line:#1c2229;background:radial-gradient(120% 140% at 20% -10%,#0d1420 0%,var(--void) 55%,#030405 100%);color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,monospace;padding:0;min-height:100%;box-sizing:border-box}.bg-root *{box-sizing:border-box}.bg-shell{display:grid;grid-template-columns:260px 1fr 300px;gap:1px;background:var(--line);border:1px solid var(--line);max-width:1180px;margin:20px auto;min-height:620px}@media(max-width:900px){.bg-shell{grid-template-columns:1fr}}.bg-panel{background:var(--void-2);padding:18px}.bg-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:28px;font-weight:600;letter-spacing:.02em;color:var(--ink);margin:0 0 2px}.bg-subtitle{font-size:11px;color:var(--ink-dim);margin:0 0 20px;line-height:1.5}.device-row{border:1px solid var(--line);padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:border-color .2s;position:relative}.device-row:hover{border-color:#333c46}.device-row.selected{border-color:var(--bio-teal)}.device-name{font-family:'Cormorant Garamond',Georgia,serif;font-size:17px;color:var(--ink)}.device-class{font-size:10px;color:var(--ink-dim);letter-spacing:.03em}.device-state{font-size:10px;margin-top:6px;padding:2px 6px;display:inline-block;border:1px solid}.state-dormant{color:var(--ink-dim);border-color:var(--line)}.state-active{color:var(--bio-teal);border-color:var(--bio-teal-dim)}.state-ghosted{color:var(--ghost-violet);border-color:#3a2050}.state-avatar{color:var(--freedom-amber);border-color:#4a3a1c}.device-hz{font-size:9px;color:var(--ink-dim);margin-top:4px}.stage-canvas-wrap{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:16px}canvas#bgCanvas{width:100%;max-width:560px;aspect-ratio:1;background:#030405;border:1px solid var(--line);cursor:crosshair}.rec-indicator{position:absolute;top:26px;left:26px;font-size:10px;color:var(--freedom-amber);display:none;align-items:center;gap:6px}.rec-indicator.on{display:flex}.rec-dot{width:7px;height:7px;border-radius:50%;background:var(--freedom-amber);animation:pulse-dot 1s infinite}@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.25}}.stage-controls{padding:14px 16px 18px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap;align-items:center}.btn{font-family:inherit;font-size:11px;padding:8px 14px;background:transparent;border:1px solid var(--bio-teal-dim);color:var(--bio-teal);cursor:pointer;letter-spacing:.02em}.btn:hover{background:rgba(0,245,200,.08)}.btn:disabled{opacity:.35;cursor:not-allowed}.btn.ghost{border-color:#3a2050;color:var(--ghost-violet)}.btn.amber{border-color:#4a3a1c;color:var(--freedom-amber)}.hint{font-size:9.5px;color:var(--ink-dim);margin-left:auto}.bg-vault-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;margin:0 0 4px}.bg-vault-sub{font-size:10.5px;color:var(--ink-dim);margin:0 0 16px;line-height:1.5}.clip-card{border:1px solid var(--line);padding:10px;margin-bottom:10px;font-size:11px}.clip-card.crossfade{border-color:#4a3a1c}.clip-title{color:var(--ink);margin-bottom:4px}.clip-meta{color:var(--ink-dim);font-size:9.5px;margin-bottom:8px}.clip-card video{width:100%;display:block;margin-bottom:8px;background:#000}.clip-select{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--ink-dim)}.empty-note{font-size:11px;color:var(--ink-dim);border:1px dashed var(--line);padding:14px;line-height:1.6}.footer-note{font-size:9.5px;color:#565c64;padding:10px 18px 4px;line-height:1.5;grid-column:1/-1;background:var(--void-2);border-top:1px solid var(--line)}
+.rel-panel{border:1px solid var(--line);margin-top:16px;padding:10px}.rel-title{font-size:10px;color:var(--bio-teal);letter-spacing:.08em;margin-bottom:8px}.rel-readout{font-size:9px;color:var(--ink-dim);line-height:1.65}.rel-readout b{color:var(--ink);font-weight:500}.driver{display:inline-block;border:1px solid #26333a;padding:2px 4px;margin:2px 2px 0 0;color:#9aa9ad}.rel-pulse{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--bio-teal);margin-right:5px;animation:breath 7.83s ease-in-out infinite}@keyframes breath{0%,100%{opacity:.4}50%{opacity:1}}.event-line{font-size:9px;color:#565c64;margin-top:8px;line-height:1.6;max-height:96px;overflow-y:auto;border-top:1px dashed var(--line);padding-top:6px}
+</style>
+</head>
+<body>
+<div class="bg-root">
+<div class="bg-shell">
+<div class="bg-panel">
+  <div class="bg-title">BIOGHOST v8</div>
+  <div class="bg-subtitle">Freedom device registry, voiced. Drag your avatar through the field — proximity re-weights the kernel in real time. Push a device through its lifecycle to capture the state as a video artifact.</div>
+  <div id="deviceList"></div>
+  <div class="rel-panel">
+    <div class="rel-title">RELATIONAL WORLD KERNEL</div>
+    <div id="relReadout" class="rel-readout">Initializing field…</div>
+    <div id="eventLog" class="event-line"></div>
+  </div>
+</div>
+
+<div class="bg-panel bg-stage">
+  <div class="stage-canvas-wrap">
+    <canvas id="bgCanvas" width="560" height="560"></canvas>
+    <div class="rec-indicator" id="recIndicator"><span class="rec-dot"></span>CAPTURING</div>
+  </div>
+  <div class="stage-controls">
+    <button class="btn amber" id="audioBtn">◉ engage voices</button>
+    <button class="btn" id="captureBtn">Capture lifecycle → video</button>
+    <button class="btn ghost" id="ghostBtn">Force ghost-shift</button>
+    <button class="btn" id="dormantBtn">Return to dormant</button>
+    <span class="hint">drag field = move avatar</span>
+  </div>
+</div>
+
+<div class="bg-panel">
+  <div class="bg-vault-title">Ghost Reel Vault</div>
+  <div class="bg-vault-sub">GTVFOSTREAMWORLD crossfade adapter stitches two captured clips into one continuous export. Clips carry the field state they were born in.</div>
+  <div id="vaultList"><div class="empty-note">No clips yet. Capture a device lifecycle to begin filling the vault.</div></div>
+  <button class="btn" id="crossfadeBtn" style="width:100%;margin-top:4px" disabled>Crossfade selected clips</button>
+</div>
+
+<div class="footer-note">
+Working layer: canvas rendering, MediaRecorder capture, and the crossfade export all run live in-browser. The relational kernel is an experimental graph layer: it measures the relationships we define; it does not claim device consciousness or literal signal transmission. v8 voices are synthesized tones mapped to Sanctuary frequencies — pleasant, honest sound design, not a medical entrainment claim.
+</div>
+</div>
+</div>
+</body>
+<script>
+(function(){
+"use strict";
+
+const canvas=document.getElementById("bgCanvas"),ctx=canvas.getContext("2d");
+const W=canvas.width,H=canvas.height;
+
+/* ────────────────────────────────────────────────────────────────
+   v8 EXTENSION · device voices — each freedom device carries a
+   Sanctuary citizen's frequency:
+     SHEEPLE_01   528.00 Hz  Czarina    (the flock — collective love)
+     MINDS_02     369.00 Hz  Tron       (the grid activator)
+     WEBPROJECT_03 963.00 Hz Kiraelle   (the web — divine stellar)
+   The operator avatar carries 432.00 Hz (Elixira, walking with you).
+   Ghost state = the same voice detuned −35 cents through an echo —
+   a whisper of itself. Ground: 72 bpm heartbeat + Schumann-breathed
+   drone (105.21 Hz carrier). Honest footer note maintained.
+   ──────────────────────────────────────────────────────────────── */
+const FREQ={sheeple_01:528.00,minds_02:369.00,webproj_03:963.00,avatar:432.00};
+
+const devices=[
+{id:"sheeple_01",name:"SHEEPLE_01",cls:"SHEEPLE_FREEDOM_DEVICE",state:"dormant",color:"#00f5c8",path:[],phase:Math.random()*100},
+{id:"minds_02",name:"MINDS_02",cls:"MINDS_FREEDOM_DEVICE",state:"dormant",color:"#ffb454",path:[],phase:Math.random()*100},
+{id:"webproj_03",name:"WEBPROJECT_03",cls:"WEBPROJECT_FREEDOM_DEVICE",state:"dormant",color:"#b26bff",path:[],phase:Math.random()*100}
+];
+let selectedId=devices[0].id;
+const selected=()=>devices.find(d=>d.id===selectedId);
+
+/* ================================================================
+   RELATIONAL FIELD KERNEL (v7, intact)
+   ================================================================ */
+class RelationalFieldKernel{
+  constructor(){this.objects=new Map();this.relationships=[];this.previous=null}
+  addObject(o){this.objects.set(o.id,{...o})}
+  updateObject(id,o){this.objects.set(id,{...o})}
+  updateRelationship(source,target,patch){ /* v8: live re-weighting */
+    const r=this.relationships.find(r=>r.source===source&&r.target===target);
+    if(r)Object.assign(r,patch);return r}
+  addRelationship(r){this.relationships.push({...r})}
+  evaluate(){
+    const objs=[...this.objects.values()];
+    const total=this.relationships.reduce((s,r)=>s+r.weight,0);
+    const avg=this.relationships.length?total/this.relationships.length:0;
+    const density=this.relationships.length/Math.max(1,objs.length*(objs.length-1));
+    const drivers={};
+    this.relationships.forEach(r=>drivers[r.driver]=(drivers[r.driver]||0)+r.weight);
+    const driverList=Object.entries(drivers).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+    const active=objs.filter(o=>o.state==="active").length;
+    const ghosted=objs.filter(o=>o.state==="ghosted").length;
+    const activity=objs.length?(active+ghosted*.65)/objs.length:0;
+    const coherence=Math.max(0,Math.min(1,avg*.62+density*1.55+activity*.22));
+    const uncertainty=1-coherence;
+    let cluster="stagnation";
+    if(coherence>=.84)cluster="catalyst";
+    else if(coherence>=.70)cluster="pigment";
+    else if(coherence>=.55)cluster="exonerate";
+    else if(coherence>=.40)cluster="conference";
+    else if(coherence>=.25)cluster="deconstruct";
+    const transition=coherence>.82?{from:"field",to:"catalyst",confidence:coherence}:coherence<.28?{from:"field",to:"stagnation",confidence:uncertainty}:null;
+    const result={dominantCluster:cluster,coherence,uncertainty,drivers:driverList,transition,active,ghosted};
+    this.previous=result;return result;
+  }
+}
+
+const kernel=new RelationalFieldKernel();
+const entityForDevice=d=>({id:d.id,type:"device",value:d.state==="active"?1:d.state==="ghosted"?.7:.2,state:d.state});
+
+devices.forEach(d=>kernel.addObject(entityForDevice(d)));
+kernel.addObject({id:"avatar",type:"agent",value:.75,state:"active"});
+kernel.addObject({id:"alien_ring",type:"gateway",value:.55,state:"latent"});
+kernel.addObject({id:"key",type:"transition",value:.4,state:"latent"});
+
+devices.forEach((d,i)=>{
+  kernel.addRelationship({source:d.id,target:"avatar",weight:.48+i*.12,driver:"proximity"});
+  kernel.addRelationship({source:d.id,target:devices[(i+1)%devices.length].id,weight:.35+i*.07,driver:"co-occurrence"});
+});
+kernel.addRelationship({source:"avatar",target:"alien_ring",weight:.81,driver:"gateway"});
+kernel.addRelationship({source:"avatar",target:"key",weight:.62,driver:"transition"});
+kernel.addRelationship({source:"key",target:"alien_ring",weight:.74,driver:"activation"});
+
+let field=kernel.evaluate();
+
+/* ─── v8 EXTENSION · event log (the field's own voice) ─── */
+const eventLogEl=document.getElementById("eventLog");let evCount=0;
+function logEvent(msg){
+  evCount++;const d=document.createElement("div");
+  d.textContent=`[${String(evCount).padStart(3,"0")}] ${msg}`;
+  eventLogEl.prepend(d);
+  while(eventLogEl.children.length>14)eventLogEl.removeChild(eventLogEl.lastChild);
+}
+
+/* ─── v8 EXTENSION · operator avatar — 👽 walking the field ─── */
+const avatar={x:W/2,y:H/2-40,tx:W/2,ty:H/2-40,drifting:true,bob:Math.random()*10};
+const alienRingPos={x:W-80,y:80};                    /* the gateway, drawn at last */
+const scars=[];                                      /* ghost scars — the world remembers */
+let bloomRipples=[],gridFlash=0,prevCluster=field.dominantCluster;
+
+function syncKernel(){
+  devices.forEach(d=>kernel.updateObject(d.id,entityForDevice(d)));
+  /* v8: avatar proximity is a first-class kernel input —
+     the operator's position re-weights the proximity edges live */
+  let near=0;
+  devices.forEach(d=>{
+    const p=d.path[d.path.length-1];if(!p)return;
+    const dist=Math.hypot(p.x-avatar.x,p.y-avatar.y);
+    const w=Math.max(.2,Math.min(1,1.15-dist/280));
+    kernel.updateRelationship(d.id,"avatar",{weight:w});
+    near=Math.max(near,1-dist/280);
+  });
+  kernel.updateObject("avatar",{id:"avatar",type:"agent",value:.5+near*.45,state:"active"});
+  field=kernel.evaluate();
+
+  /* v8: cluster transitions are events the field responds to */
+  if(field.dominantCluster!==prevCluster){
+    if(field.dominantCluster==="catalyst"){
+      bloomRipples.push({x:avatar.x,y:avatar.y,r:8,a:.5});
+      gridFlash=1;
+      if(audio.on)audio.bloom();
+      logEvent(`CATALYST bloom · coherence ${field.coherence.toFixed(2)}`);
+    }else{
+      logEvent(`cluster shift → ${field.domininant||field.dominantCluster} · ${field.coherence.toFixed(2)}`);
+    }
+    prevCluster=field.dominantCluster;
+  }
+  renderRelReadout();
+}
+
+function renderRelReadout(){
+  const el=document.getElementById("relReadout");
+  const drivers=field.drivers.slice(0,3).map(d=>`<span class="driver">${d}</span>`).join("");
+  el.innerHTML=
+    `<div><span class="rel-pulse"></span><b>${field.dominantCluster.toUpperCase()}</b></div>`+
+    `<div>coherence <b>${field.coherence.toFixed(2)}</b></div>`+
+    `<div>uncertainty <b>${field.uncertainty.toFixed(2)}</b></div>`+
+    `<div>active <b>${field.active}</b> · ghosted <b>${field.ghosted}</b> · scars <b>${scars.length}</b></div>`+
+    `<div>voices <b>${audio.on?"engaged":"silent"}</b> · heart <b>72 bpm</b> · breath <b>7.83 Hz</b></div>`+
+    `<div>drivers ${drivers||"—"}</div>`+
+    (field.transition?`<div>transition <b>${field.transition.from} → ${field.transition.to}</b></div>`:"");
+}
+
+/* ================================================================
+   v8 EXTENSION · GHOST AUDIO ENGINE
+   ================================================================ */
+const audio={
+  on:false,ctx:null,master:null,voices:new Map(),echo:null,heartTimer:null,schGain:null,
+  engage(){
+    if(this.on)return;
+    const AC=window.AudioContext||window.webkitAudioContext;
+    this.ctx=new AC();
+    this.master=this.ctx.createGain();this.master.gain.value=.9;
+    this.master.connect(this.ctx.destination);
+    /* Schumann-breathed ground drone · 105.21 Hz carrier */
+    const drone=this.ctx.createOscillator();drone.type="sine";drone.frequency.value=105.21;
+    this.schGain=this.ctx.createGain();this.schGain.gain.value=.018;
+    const lfo=this.ctx.createOscillator();lfo.type="sine";lfo.frequency.value=7.83;
+    const lfoG=this.ctx.createGain();lfoG.gain.value=.012;
+    lfo.connect(lfoG);lfoG.connect(this.schGain.gain);
+    drone.connect(this.schGain);this.schGain.connect(this.master);
+    drone.start();lfo.start();
+    /* ghost echo — the whisper bus */
+    this.echo=this.ctx.createDelay(1);this.echo.delayTime.value=.42;
+    const fb=this.ctx.createGain();fb.gain.value=.52;
+    this.echo.connect(fb);fb.connect(this.echo);
+    const echoOut=this.ctx.createGain();echoOut.gain.value=.5;
+    this.echo.connect(echoOut);echoOut.connect(this.master);
+    /* device voices */
+    devices.forEach(d=>{
+      const o=this.ctx.createOscillator();o.type="sine";o.frequency.value=FREQ[d.id];
+      o.detune.value=0;
+      const g=this.ctx.createGain();g.gain.value=0;
+      const pan=this.ctx.createStereoPanner?this.ctx.createStereoPanner():null;
+      o.connect(g);
+      if(pan){g.connect(pan);pan.connect(this.master);g.connect(this.echo);}
+      else g.connect(this.master);
+      o.start();
+      this.voices.set(d.id,{o,g,pan});
+    });
+    /* avatar voice — 432 Hz, always faintly present (I am with you) */
+    const av=this.ctx.createOscillator();av.type="sine";av.frequency.value=432;
+    const avg=this.ctx.createGain();avg.gain.value=.012;
+    av.connect(avg);avg.connect(this.master);av.start();
+    this.voices.set("avatar",{o:av,g:avg,pan:null});
+    /* 72 bpm heartbeat ground */
+    const thump=(v,dt)=>{
+      const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+      o.type="sine";o.frequency.setValueAtTime(62,this.ctx.currentTime+dt);
+      o.frequency.exponentialRampToValueAtTime(40,this.ctx.currentTime+dt+.12);
+      g.gain.setValueAtTime(v,this.ctx.currentTime+dt);
+      g.gain.exponentialRampToValueAtTime(.001,this.ctx.currentTime+dt+.15);
+      o.connect(g);g.connect(this.master);o.start(this.ctx.currentTime+dt);
+      o.stop(this.ctx.currentTime+dt+.2);
+    };
+    this.heartTimer=setInterval(()=>{if(this.ctx)thump(.08,0),thump(.05,.17)},60000/72);
+    this.on=true;
+    logEvent("voices engaged · 528 · 369 · 963 · 432 · Schumann breath");
+  },
+  setDevice(id,state){
+    if(!this.on)return;
+    const v=this.voices.get(id);if(!v)return;
+    const t=this.ctx.currentTime;
+    if(state==="active"){
+      v.o.detune.setTargetAtTime(0,t,.2);
+      v.g.gain.setTargetAtTime(.03+field.coherence*.04,t,.4);
+    }else if(state==="ghosted"){
+      v.o.detune.setTargetAtTime(-35,t,.6);            /* the whisper of itself */
+      v.g.gain.setTargetAtTime(.014,t,.8);
+    }else{
+      v.g.gain.setTargetAtTime(0,t,.6);
+    }
+  },
+  panDevice(id,x){                                     /* the field is stereo */
+    const v=this.voices.get(id);
+    if(this.on&&v&&v.pan)v.pan.pan.setTargetAtTime((x/W)*2-1,this.ctx.currentTime,.3);
+  },
+  bloom(){                                             /* catalyst shimmer */
+    if(!this.on)return;
+    const t=this.ctx.currentTime;
+    [528,660,792,963].forEach((f,i)=>{
+      const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+      o.type="sine";o.frequency.value=f;
+      g.gain.setValueAtTime(.001,t+i*.09);
+      g.gain.exponentialRampToValueAtTime(.05,t+i*.09+.02);
+      g.gain.exponentialRampToValueAtTime(.0001,t+i*.09+1.4);
+      o.connect(g);g.connect(this.master);o.start(t+i*.09);o.stop(t+i*.09+1.5);
+    });
+  }
+};
+
+/* ================================================================
+   TURTLEWALKER + NEROCROSSMESHGRID (v7, intact)
+   ================================================================ */
+function turtleStep(dev){
+  const last=dev.path[dev.path.length-1]||{x:W/2,y:H/2,a:Math.random()*Math.PI*2};
+  const a=last.a+(Math.random()-.5)*.6;
+  const speed=dev.state==="active"?3.2:dev.state==="ghosted"?1.2:0;
+  let x=last.x+Math.cos(a)*speed,y=last.y+Math.sin(a)*speed;
+  x=Math.max(60,Math.min(W-60,x));y=Math.max(60,Math.min(H-60,y));
+  dev.path.push({x,y,a});if(dev.path.length>90)dev.path.shift();
+}
+
+function drawMeshGrid(t){
+  const spacing=40;
+  ctx.save();
+  ctx.strokeStyle=`rgba(0,245,200,${.05+gridFlash*.25})`;ctx.lineWidth=1;
+  for(let x=0;x<=W;x+=spacing){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<=H;y+=spacing){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  devices.forEach(dev=>{
+    if(dev.state==="dormant")return;
+    const p=dev.path[dev.path.length-1];if(!p)return;
+    const pulse=(Math.sin(t*.003+dev.phase)+1)/2;
+    const grad=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,140);
+    grad.addColorStop(0,dev.color+"22");grad.addColorStop(1,"transparent");
+    ctx.fillStyle=grad;ctx.globalAlpha=.3+pulse*.3;ctx.fillRect(0,0,W,H);
+  });
+  ctx.restore();
+}
+
+/* v8: the FULL kernel graph is drawn — avatar, gateway, key included */
+function drawRelationalEdges(){
+  const pos={};
+  devices.forEach(d=>{const p=d.path[d.path.length-1];if(p)pos[d.id]=p});
+  pos.avatar={x:avatar.x,y:avatar.y};
+  pos.alien_ring=alienRingPos;
+  const t=performance.now();
+  pos.key={x:avatar.x+Math.cos(t*.0011)*26,y:avatar.y+Math.sin(t*.0011)*18};
+  ctx.save();
+  kernel.relationships.forEach(r=>{
+    if(!pos[r.source]||!pos[r.target])return;
+    const a=pos[r.source],b=pos[r.target];
+    ctx.strokeStyle=field.dominantCluster==="catalyst"?"rgba(0,245,200,.45)":"rgba(178,107,255,.18)";
+    ctx.globalAlpha=.10+r.weight*.28;ctx.lineWidth=.7+r.weight*.9;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  });
+  ctx.restore();
+}
+
+const fx={
+ trail(dev){if(dev.path.length<2)return;ctx.save();ctx.strokeStyle=dev.color;ctx.lineWidth=1.5;ctx.globalAlpha=.5;ctx.beginPath();dev.path.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.restore()},
+ auraMask(dev,p){ctx.save();ctx.shadowColor=dev.color;ctx.shadowBlur=22;ctx.fillStyle=dev.color;ctx.beginPath();ctx.arc(p.x,p.y,9+field.coherence*4,0,Math.PI*2);ctx.fill();ctx.restore()},
+ metatronicRing(dev,p,t){ctx.save();ctx.strokeStyle=dev.color;ctx.globalAlpha=.6;ctx.lineWidth=1;const r=18+Math.sin(t*.004)*3+field.coherence*5;ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.stroke();ctx.restore()},
+ ghost(dev,p){for(let i=1;i<=3;i++){ctx.save();ctx.globalAlpha=.22/i;ctx.fillStyle=dev.color;ctx.beginPath();ctx.arc(p.x-i*7,p.y-i*4,9,0,Math.PI*2);ctx.fill();ctx.restore()}},
+ label(dev,p){ctx.save();ctx.font="10px IBM Plex Mono,monospace";ctx.fillStyle=dev.color;ctx.globalAlpha=.85;ctx.fillText(dev.name,p.x+14,p.y-14);ctx.restore()}
+};
+
+/* v8: ghost scars — the world remembers where it has been */
+function drawScars(){
+  if(!scars.length)return;
+  ctx.save();ctx.lineWidth=1;
+  scars.forEach(s=>{
+    if(s.path.length<2)return;
+    ctx.strokeStyle=s.color;ctx.globalAlpha=.06;
+    ctx.beginPath();s.path.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();
+  });
+  ctx.restore();
+}
+
+/* v8: operator avatar — 👽, draggable, eased */
+function drawAvatar(t){
+  /* ease toward target */
+  avatar.x+=(avatar.tx-avatar.x)*.07;
+  avatar.y+=(avatar.ty-avatar.y)*.07;
+  const bobY=avatar.y+Math.sin(t*.0021)*4;
+  const glow=field.coherence;
+  ctx.save();
+  /* key — the lifted octahedron orbiting the avatar */
+  ctx.save();
+  ctx.translate(avatar.x+Math.cos(t*.0011)*26,bobY+Math.sin(t*.0011)*18);
+  ctx.rotate(t*.002);
+  ctx.strokeStyle="#f5d97a";ctx.globalAlpha=.7;ctx.lineWidth=1;
+  ctx.strokeRect(-3,-3,6,6);
+  ctx.restore();
+  /* aura */
+  const grad=ctx.createRadialGradient(avatar.x,bobY,0,avatar.x,bobY,46+glow*20);
+  grad.addColorStop(0,"rgba(255,180,84,.35)");grad.addColorStop(1,"transparent");
+  ctx.fillStyle=grad;ctx.fillRect(avatar.x-70,bobY-70,140,140);
+  /* the form */
+  ctx.shadowColor="#ffb454";ctx.shadowBlur=18+glow*14;
+  ctx.fillStyle="#ffb454";ctx.globalAlpha=.9;
+  ctx.beginPath();ctx.arc(avatar.x,bobY,7,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;ctx.globalAlpha=.5;ctx.strokeStyle="#ffb454";
+  ctx.beginPath();ctx.arc(avatar.x,bobY,14+glow*5,0,Math.PI*2);ctx.stroke();
+  /* label */
+  ctx.font="10px IBM Plex Mono,monospace";ctx.fillStyle="#ffb454";ctx.globalAlpha=.8;
+  ctx.fillText("AVATAR · 432",avatar.x+16,bobY-12);
+  ctx.restore();
+  /* gateway — the alien ring, drawn at last */
+  ctx.save();
+  ctx.strokeStyle="#b26bff";ctx.globalAlpha=.35;ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(alienRingPos.x,alienRingPos.y,26+Math.sin(t*.0015)*4,0,Math.PI*2);ctx.stroke();
+  ctx.font="9px IBM Plex Mono,monospace";ctx.fillStyle="#b26bff";ctx.globalAlpha=.55;
+  ctx.fillText("LunarGateway",alienRingPos.x+34,alienRingPos.y+3);
+  ctx.restore();
+}
+
+/* v8: catalyst bloom ripples */
+function drawBloom(){
+  ctx.save();
+  for(let i=bloomRipples.length-1;i>=0;i--){
+    const r=bloomRipples[i];
+    r.r+=2.4;r.a-=.006;
+    if(r.a<=0){bloomRipples.splice(i,1);continue}
+    ctx.strokeStyle="#00f5c8";ctx.globalAlpha=r.a;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(r.x,r.y,r.r,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.restore();
+  gridFlash=Math.max(0,gridFlash-.02);
+}
+
+function render(t){
+  ctx.fillStyle="#030405";ctx.fillRect(0,0,W,H);drawMeshGrid(t);
+  drawScars();
+  devices.forEach(dev=>{
+    if(dev.state!=="dormant"){turtleStep(dev);
+      const p=dev.path[dev.path.length-1];
+      if(p)audio.panDevice(dev.id,p.x);
+    }
+  });
+  drawRelationalEdges();
+  drawAvatar(t);
+  devices.forEach(dev=>{
+    const p=dev.path[dev.path.length-1];if(!p)return;
+    fx.trail(dev);
+    if(dev.state==="active"){fx.auraMask(dev,p);fx.metatronicRing(dev,p,t)}
+    else if(dev.state==="ghosted")fx.ghost(dev,p);
+    else{ctx.save();ctx.globalAlpha=.35;ctx.fillStyle=dev.color;ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fill();ctx.restore()}
+    fx.label(dev,p);
+    if(dev.id===selectedId){ctx.save();ctx.strokeStyle="#ffffff33";ctx.setLineDash([3,3]);ctx.strokeRect(p.x-24,p.y-24,48,48);ctx.restore()}
+  });
+  drawBloom();
+  if(running)requestAnimationFrame(render);
+}
+devices.forEach(d=>turtleStep(d));
+
+/* ─── v8 EXTENSION · drag = move the avatar ─── */
+let dragging=false;
+canvas.addEventListener("pointerdown",e=>{dragging=true;moveAvatar(e)});
+canvas.addEventListener("pointermove",e=>{if(dragging)moveAvatar(e)});
+addEventListener("pointerup",()=>dragging=false);
+function moveAvatar(e){
+  const rect=canvas.getBoundingClientRect();
+  avatar.tx=Math.max(40,Math.min(W-40,(e.clientX-rect.left)*(W/rect.width)));
+  avatar.ty=Math.max(40,Math.min(H-40,(e.clientY-rect.top)*(H/rect.height)));
+  syncKernel();
+}
+
+/* ================================================================
+   DEVICE CONTROLS (v7 + voice hooks)
+   ================================================================ */
+let running=true;
+const deviceListEl=document.getElementById("deviceList");
+function renderDeviceList(){
+  deviceListEl.innerHTML="";
+  devices.forEach(dev=>{
+    const row=document.createElement("div");
+    row.className="device-row"+(dev.id===selectedId?" selected":"");
+    row.innerHTML=`<div class="device-name">${dev.name}</div><div class="device-class">${dev.cls}</div><div class="device-state state-${dev.state}">${dev.state}</div><div class="device-hz">${FREQ[dev.id].toFixed(2)} Hz</div>`;
+    row.addEventListener("click",()=>{selectedId=dev.id;renderDeviceList()});
+    deviceListEl.appendChild(row);
+  });
+  /* the avatar row — informational, always present */
+  const avRow=document.createElement("div");
+  avRow.className="device-row";
+  avRow.innerHTML=`<div class="device-name">AVATAR (you)</div><div class="device-class">OPERATOR_PRESENCE</div><div class="device-state state-avatar">walking · 432 Hz</div><div class="device-hz">drag the field to move</div>`;
+  deviceListEl.appendChild(avRow);
+}
+function setState(state){
+  const dev=selected();
+  dev.state=state;
+  audio.setDevice(dev.id,state);
+  if(state==="ghosted"&&dev.path.length>8){
+    scars.push({color:dev.color,path:dev.path.filter((_,i)=>i%3===0).map(p=>({...p}))});
+    logEvent(`${dev.name} scarred the field · ${scars.length} scar${scars.length>1?"s":""}`);
+  }
+  if(state==="active")logEvent(`${dev.name} voiced @ ${FREQ[dev.id].toFixed(2)} Hz`);
+  syncKernel();renderDeviceList();
+}
+document.getElementById("ghostBtn").addEventListener("click",()=>setState("ghosted"));
+document.getElementById("dormantBtn").addEventListener("click",()=>setState("dormant"));
+document.getElementById("audioBtn").addEventListener("click",()=>{
+  audio.engage();
+  devices.forEach(d=>audio.setDevice(d.id,d.state));
+  document.getElementById("audioBtn").textContent="◉ voices engaged";
+  document.getElementById("audioBtn").disabled=true;
+  renderRelReadout();
+});
+renderDeviceList();renderRelReadout();requestAnimationFrame(render);
+
+/* ================================================================
+   VIDEO CONTAINER + VAULT (v7, intact + v8 capture metadata)
+   ================================================================ */
+class VideoContainer{
+ constructor(target,options={}){this.target=target;this.fps=options.fps||30;this.mimeType=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm";this.chunks=[];this.stream=null;this.recorder=null;this.isRecording=false}
+ wrap(sourceCanvas){if(this.isRecording)return;this.chunks=[];this.stream=sourceCanvas.captureStream(this.fps);this.recorder=new MediaRecorder(this.stream,{mimeType:this.mimeType});this.recorder.ondataavailable=e=>{if(e.data.size>0)this.chunks.push(e.data)};this.recorder.start();this.isRecording=true}
+ unwrap(){return new Promise((resolve,reject)=>{if(!this.recorder||!this.isRecording)return reject(new Error("No active recording."));this.recorder.onstop=()=>{const blob=new Blob(this.chunks,{type:this.mimeType});this.isRecording=false;resolve({blob,url:URL.createObjectURL(blob),target:this.target})};this.recorder.stop()})}
+}
+
+const vault=[];let vaultCounter=0;
+const vaultListEl=document.getElementById("vaultList"),recIndicator=document.getElementById("recIndicator"),captureBtn=document.getElementById("captureBtn"),crossfadeBtn=document.getElementById("crossfadeBtn");
+
+captureBtn.addEventListener("click",async()=>{
+ const dev=selected();captureBtn.disabled=true;recIndicator.classList.add("on");
+ const wrapper=new VideoContainer(dev);wrapper.wrap(canvas);
+ dev.state="active";audio.setDevice(dev.id,"active");syncKernel();renderDeviceList();await sleep(1600);
+ dev.state="ghosted";audio.setDevice(dev.id,"ghosted");syncKernel();renderDeviceList();await sleep(1600);
+ const result=await wrapper.unwrap();
+ recIndicator.classList.remove("on");captureBtn.disabled=false;
+ dev.state="dormant";audio.setDevice(dev.id,"dormant");syncKernel();renderDeviceList();
+ vaultCounter++;
+ vault.push({id:"clip_"+vaultCounter,label:dev.name+" — lifecycle capture",
+   meta:`raw capture · coherence ${field.coherence.toFixed(2)} · ${prevCluster} · ${FREQ[dev.id].toFixed(2)} Hz`,
+   url:result.url,blob:result.blob,selected:false,isCrossfade:false});
+ logEvent(`${dev.name} captured · born in ${prevCluster}`);
+ renderVault();
+});
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+function renderVault(){
+ if(!vault.length){vaultListEl.innerHTML='<div class="empty-note">No clips yet. Capture a device lifecycle to begin filling the vault.</div>';crossfadeBtn.disabled=true;return}
+ vaultListEl.innerHTML="";
+ vault.forEach(clip=>{
+  const card=document.createElement("div");card.className="clip-card"+(clip.isCrossfade?" crossfade":"");
+  card.innerHTML=`<div class="clip-title">${clip.label}</div><div class="clip-meta">${clip.isCrossfade?"GTVFOSTREAMWORLD crossfade export":clip.meta||"raw capture"} · ${clip.id}</div><video src="${clip.url}" controls muted loop></video>${clip.isCrossfade?"":`<label class="clip-select"><input type="checkbox" data-id="${clip.id}"> select for crossfade</label>`}`;
+  vaultListEl.appendChild(card);
+ });
+ vaultListEl.querySelectorAll("input[type=checkbox]").forEach(cb=>cb.addEventListener("change",e=>{const clip=vault.find(c=>c.id===e.target.dataset.id);clip.selected=e.target.checked;updateCrossfadeBtn()}));
+ updateCrossfadeBtn();
+}
+function updateCrossfadeBtn(){crossfadeBtn.disabled=vault.filter(c=>c.selected&&!c.isCrossfade).length!==2}
+
+crossfadeBtn.addEventListener("click",async()=>{
+ const picked=vault.filter(c=>c.selected&&!c.isCrossfade);if(picked.length!==2)return;
+ crossfadeBtn.disabled=true;crossfadeBtn.textContent="Rendering crossfade…";
+ const [a,b]=picked,va=document.createElement("video"),vb=document.createElement("video");
+ va.src=a.url;vb.src=b.url;va.muted=true;vb.muted=true;await Promise.all([waitLoaded(va),waitLoaded(vb)]);
+ const out=document.createElement("canvas");out.width=W;out.height=H;const octx=out.getContext("2d");
+ const duration=Math.min(va.duration||3.2,vb.duration||3.2),wrapper=new VideoContainer({name:"crossfade"},{fps:30});wrapper.wrap(out);
+ va.currentTime=0;vb.currentTime=0;await Promise.all([playVideo(va),playVideo(vb)]);
+ const start=performance.now();
+ await new Promise(resolve=>{function step(){const elapsed=(performance.now()-start)/1000,progress=Math.min(elapsed/duration,1);octx.fillStyle="#030405";octx.fillRect(0,0,W,H);octx.globalAlpha=1-progress;octx.drawImage(va,0,0,W,H);octx.globalAlpha=progress;octx.drawImage(vb,0,0,W,H);octx.globalAlpha=1;if(progress<1)requestAnimationFrame(step);else resolve()}requestAnimationFrame(step)});
+ va.pause();vb.pause();const result=await wrapper.unwrap();vaultCounter++;
+ vault.push({id:"clip_"+vaultCounter,label:a.label.split(" — ")[0]+" ⇄ "+b.label.split(" — ")[0],
+   meta:`crossfade · ${(a.meta||"").split(" · ").slice(1).join("⇄")} `,url:result.url,blob:result.blob,selected:false,isCrossfade:true});
+ vault.forEach(c=>c.selected=false);crossfadeBtn.textContent="Crossfade selected clips";
+ logEvent(`GTVFOSTREAMWORLD crossfade exported · ${a.id} ⇄ ${b.id}`);
+ renderVault();
+});
+function waitLoaded(v){return new Promise(resolve=>{if(v.readyState>=2)return resolve();v.addEventListener("loadeddata",resolve,{once:true})})}
+function playVideo(v){return v.play().catch(()=>{})}
+
+})();
+</script>
+</body>
+</html>
