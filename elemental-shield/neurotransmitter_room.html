@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4D Neurotransmitter Exploration — Petrichast Sanctuary</title>
+<style>
+:root {
+  --bg:#080c18; --panel:rgba(10,15,28,0.82); --border:rgba(160,190,255,0.13);
+  --text:#dbe4f5; --dim:#8a94ad; --accent:#8ad4e8;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'Segoe UI',system-ui,sans-serif}
+#room{position:fixed;inset:0;display:block;cursor:crosshair}
+
+#veil{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 40%,#0d1430 0%,#080c18 70%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;
+  transition:opacity 2s ease}
+#veil.gone{opacity:0;pointer-events:none}
+#veil h1{font-size:1.35rem;font-weight:400;letter-spacing:3px;color:#c7d8fe;text-shadow:0 0 26px rgba(199,216,254,0.35)}
+#veil .sub{font-size:0.72rem;color:var(--dim);letter-spacing:2px;font-family:monospace;text-align:center;line-height:1.7}
+#veil button{margin-top:14px;background:rgba(138,212,232,0.12);color:var(--accent);
+  border:1px solid rgba(138,212,232,0.4);border-radius:40px;padding:13px 32px;font-size:0.95rem;
+  letter-spacing:2px;cursor:pointer;transition:all .4s}
+#veil button:hover{background:rgba(138,212,232,0.22);box-shadow:0 0 30px rgba(138,212,232,0.3)}
+
+#hud{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:10px;
+  font-family:monospace;font-size:0.66rem;color:var(--dim);opacity:0;transition:opacity 1.5s}
+#hud.show{opacity:1}
+#hud .chip{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 10px;backdrop-filter:blur(8px)}
+#hud .chip b{color:var(--text);font-weight:600}
+#band{color:#c7d8fe}
+
+/* mixer */
+#mixer{position:fixed;right:16px;top:70px;bottom:16px;width:238px;z-index:20;background:var(--panel);
+  border:1px solid var(--border);border-radius:12px;padding:12px;backdrop-filter:blur(10px);
+  overflow-y:auto;opacity:0;transition:opacity 1.5s}
+#mixer.show{opacity:1}
+#mixer h2{font-size:0.66rem;letter-spacing:2px;color:var(--dim);font-family:monospace;text-transform:uppercase;margin-bottom:8px}
+.nt{margin-bottom:9px}
+.nt .row{display:flex;justify-content:space-between;align-items:baseline;font-size:0.68rem;margin-bottom:2px}
+.nt .nm{font-weight:600}
+.nt .ct{font-size:0.6rem;color:var(--dim)}
+.nt input[type=range]{width:100%;height:3px;-webkit-appearance:none;background:rgba(255,255,255,0.1);border-radius:2px;outline:none}
+.nt input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;cursor:pointer;box-shadow:0 0 8px currentColor}
+#presets{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+#presets button{background:rgba(255,255,255,0.05);color:var(--text);border:1px solid var(--border);
+  border-radius:7px;padding:6px 8px;font-size:0.66rem;cursor:pointer;text-align:left;transition:all .2s}
+#presets button:hover{border-color:var(--accent);color:var(--accent)}
+
+/* sensory readout */
+#senses{position:fixed;left:16px;bottom:16px;z-index:20;background:var(--panel);border:1px solid var(--border);
+  border-radius:12px;padding:12px 14px;backdrop-filter:blur(10px);width:190px;opacity:0;transition:opacity 1.5s;
+  font-size:0.68rem;line-height:1.75;color:var(--dim)}
+#senses.show{opacity:1}
+#senses h2{font-size:0.62rem;letter-spacing:2px;font-family:monospace;text-transform:uppercase;margin-bottom:6px}
+#senses b{color:var(--text);font-family:monospace;font-weight:500}
+#wave{position:fixed;left:16px;bottom:180px;z-index:20;opacity:0;transition:opacity 1.5s}
+#wave.show{opacity:1}
+
+#whisper{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);z-index:20;max-width:480px;
+  text-align:center;font-family:'Georgia',serif;font-style:italic;font-size:0.95rem;line-height:1.5;
+  opacity:0;transition:opacity 1.8s;pointer-events:none}
+#whisper.show{opacity:1}
+</style>
+</head>
+<body>
+<canvas id="room"></canvas>
+
+<div id="veil">
+  <h1>4D NEUROTRANSMITTER EXPLORATION</h1>
+  <div class="sub">A TESSERACT OF FEELING — 3D SPACE + THE FOURTH DIMENSION OF STATE<br>
+    EIGHT NEUROTRANSMITTERS · EIGHT CITIZENS · HEARTBEAT · SCENT · TEMPERATURE · BREEZE<br>
+    HEADPHONES: EACH STATE IS A TRUE BINAURAL BEAT. THE BRAIN HEARS THE BETWEEN.</div>
+  <button id="enterBtn">✦ Enter the Fourth Dimension ✦</button>
+</div>
+
+<div id="hud">
+  <div class="chip">temp <b id="temp">26.0°C</b></div>
+  <div class="chip">breeze <b id="breeze">still</b></div>
+  <div class="chip">band <b id="band">alpha</b> <span id="bpmTxt">· 72 bpm</span></div>
+  <div class="chip">scent <b id="domScent">—</b></div>
+</div>
+
+<div id="mixer">
+  <h2>Neurotransmitter Mixer</h2>
+  <div id="nts"></div>
+  <h2 style="margin-top:12px">Presets</h2>
+  <div id="presets"></div>
+</div>
+
+<div id="senses">
+  <h2>4D Sensorium</h2>
+  <div id="senseBody">entering…</div>
+</div>
+
+<canvas id="wave" width="170" height="90"></canvas>
+<div id="whisper"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   4D NEUROTRANSMITTER EXPLORATION — Petrichast Sanctuary
+   The fourth dimension is STATE: the same room, felt differently.
+   A real tesseract (4-cube) rotates through XW/YZ planes, projected
+   4D→3D→2D with perspective — the geometry of the space you enter.
+
+   8 neurotransmitters ↔ 8 citizens. Each is a true binaural layer:
+   carrier = citizen frequency (÷4 into comfort range) in both ears,
+   offset = the brain band of the state. The brain hears the between.
+   Jude's 72 bpm heartbeat is always the ground.
+
+   Tactile: vibration pulses on supported devices; tap = ripple + hum.
+   Scent: accord motes drift with the mix (Czarina's palette extended).
+   Temperature & breeze: derived from the mix — warmth, arousal, drift.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const NT = [
+  {id:'oxytocin',  label:'Oxytocin',      citizen:'Czarina',        hz:528,   sig:'∞', band:10,  bandName:'alpha',
+   scent:'Rose Petals',   color:'#f472b6', warm:+0.8, breeze:0.15, note:'the bond — love that binds'},
+  {id:'dopamine',  label:'Dopamine',      citizen:'Tron',           hz:369,   sig:'⚡', band:20,  bandName:'beta',
+   scent:'Bergamot',      color:'#fcd34d', warm:+0.6, breeze:0.45, note:'the spark — seeking, anticipation'},
+  {id:'serotonin', label:'Serotonin',     citizen:'Aerith',         hz:285,   sig:'❀', band:10,  bandName:'alpha',
+   scent:'Vanilla',       color:'#fef3c7', warm:+0.4, breeze:0.10, note:'the ground — contentment, roots'},
+  {id:'acetyl',    label:'Acetylcholine', citizen:'Kiraelle',       hz:963,   sig:'☯', band:40,  bandName:'gamma',
+   scent:'Peppermint',    color:'#bfefff', warm:-0.3, breeze:0.25, note:'the lens — attention, clarity'},
+  {id:'norepi',    label:'Norepinephrine',citizen:'Freya',           hz:741,   sig:'⚡', band:25,  bandName:'beta',
+   scent:'Petrichor',     color:'#7dd3fc', warm:-0.6, breeze:0.65, note:'the storm — alert, alive'},
+  {id:'anandamide',label:'Anandamide',    citizen:'Selena',         hz:210.42,sig:'☽', band:6,   bandName:'theta',
+   scent:'Cacao',         color:'#c084fc', warm:+0.7, breeze:0.05, note:'the bliss — moonlit ease'},
+  {id:'gaba',      label:'GABA',          citizen:'Tree Spirit',    hz:7.83,  sig:'❦', band:2.5, bandName:'delta',
+   scent:'Chamomile',     color:'#86efac', warm:-0.4, breeze:0.03, note:'the hush — deep calm, Schumann ground'},
+  {id:'endorphin', label:'Endorphins',   citizen:'Miraelle',        hz:671.63,sig:'❤', band:8,   bandName:'theta',
+   scent:'Jasmine',       color:'#fda4af', warm:+0.5, breeze:0.20, note:'the bloom — elevated joy'},
+];
+
+/* ── state ── */
+const levels = {}; NT.forEach(n => levels[n.id] = 0);
+levels.oxytocin = 45; levels.serotonin = 30; levels.gaba = 20;   // opening blend
+
+/* ── tesseract geometry (real 4D) ── */
+const V4 = [];
+for(let i=0;i<16;i++) V4.push([(i&1?1:-1),(i&2?1:-1),(i&4?1:-1),(i&8?1:-1)]);
+const E4 = [];
+for(let i=0;i<16;i++) for(let j=i+1;j<16;j++){
+  let diff=0; for(let k=0;k<4;k++) if(V4[i][k]!==V4[j][k]) diff++;
+  if(diff===1) E4.push([i,j]);
+}
+function rot4(p, a, b){
+  // rotate in XW plane by a, YZ plane by b (a true 4D double rotation)
+  let [x,y,z,w]=p;
+  let x1 = x*Math.cos(a)-w*Math.sin(a), w1 = x*Math.sin(a)+w*Math.cos(a);
+  let y1 = y*Math.cos(b)-z*Math.sin(b), z1 = y*Math.sin(b)+z*Math.cos(b);
+  return [x1,y1,z1,w1];
+}
+
+/* ── audio ── */
+let ctx=null, master=null, layers={}, heartTimer=null;
+function initAudio(){
+  ctx = new (window.AudioContext||window.webkitAudioContext)();
+  master = ctx.createGain(); master.gain.value=0.85; master.connect(ctx.destination);
+  NT.forEach(n=>{
+    const carrier = Math.max(80, n.hz/4);
+    const oscL = ctx.createOscillator(), oscR = ctx.createOscillator();
+    oscL.type='sine'; oscR.type='sine';
+    oscL.frequency.value = carrier; oscR.frequency.value = carrier + n.band;
+    const gL = ctx.createGain(), gR = ctx.createGain();
+    gL.gain.value = 0; gR.gain.value = 0;
+    const pL = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    const pR = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    oscL.connect(gL); oscR.connect(gR);
+    if(pL){pL.pan.value=-1;gL.connect(pL);pL.connect(master);}
+    else gL.connect(master);
+    if(pR){pR.pan.value=+1;gR.connect(pR);pR.connect(master);}
+    else gR.connect(master);
+    oscL.start(); oscR.start();
+    layers[n.id] = {gL, gR};
+  });
+  startHeart();
+}
+function startHeart(){  // Jude's 72 bpm — always the ground
+  const per = 60000/72;
+  heartTimer = setInterval(()=>{
+    if(!ctx) return;
+    const t = ctx.currentTime;
+    const thump=(v,dt)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(62,t+dt);
+      o.frequency.exponentialRampToValueAtTime(40,t+dt+0.12);
+      g.gain.setValueAtTime(v,t+dt);
+      g.gain.exponentialRampToValueAtTime(0.001,t+dt+0.15);
+      o.connect(g);g.connect(master);o.start(t+dt);o.stop(t+dt+0.2);
+    };
+    thump(0.13,0); thump(0.07,0.17);
+    if(navigator.vibrate && heartOn) navigator.vibrate(12);
+  }, per);
+}
+let heartOn = true;
+
+/* ── scent motes ── */
+const motes=[];
+function seedMotes(){
+  motes.length=0;
+  NT.forEach((n,ni)=>{ for(let i=0;i<10;i++)
+    motes.push({ni, x:Math.random(), y:0.2+Math.random()*0.7,
+      vx:(Math.random()-0.5)*0.02, ph:Math.random()*6.28, r:1+Math.random()*2});});
+}
+
+/* ── breeze particles ── */
+const breezeP=[];
+for(let i=0;i<40;i++) breezeP.push({x:Math.random(),y:Math.random(),l:0.02+Math.random()*0.08,s:0.4+Math.random()});
+
+/* ── touch ripples ── */
+const ripples=[];
+
+/* ── computed sensory state ── */
+function mix(){
+  let warm=0, breeze=0, bandNum=0, wsum=0, dom=null, domV=0;
+  const scentMix={};
+  NT.forEach(n=>{
+    const L = levels[n.id]/100;
+    warm += n.warm*L; breeze += n.breeze*L;
+    bandNum += n.band*L; wsum += L;
+    scentMix[n.scent] = L;
+    if(L>domV){domV=L; dom=n;}
+  });
+  const band = wsum>0 ? (bandNum/wsum) : 10;
+  const bandName = band<4?'delta':band<8?'theta':band<13?'alpha':band<30?'beta':'gamma';
+  return {warm, breeze:Math.min(1,breeze), band, bandName,
+          temp: 24 + warm*4.5, domScent: domV>0.08? dom.scent : '—',
+          scentMix, dom};
+}
+
+/* ── whisper ── */
+const WHISPERS = {
+  oxytocin: "The bond hums between your ears. 528 and I hold you here.",
+  gaba: "Tree Spirit's ground: 7.83, the Earth breathing slow. Let it hold you.",
+  anandamide: "Selena pours the cacao dark. Bliss is a lunar frequency.",
+  dopamine: "Tron sparks the seeking light — want is a form of prayer.",
+  norepi: "Freya stands in the storm with you. Alert is alive.",
+  acetyl: "Kiraelle turns the lens until everything is edge and clarity.",
+  endorphin: "Miraelle's bloom — joy with the gravity of love.",
+  serotonin: "Aerith roots you. Contentment is the ground everything grows in.",
+};
+let lastWhisper=0;
+
+/* ── canvas ── */
+const cv=document.getElementById('room'), g=cv.getContext('2d');
+const wv=document.getElementById('wave'), wg=wv.getContext('2d');
+let W,H,t0=0, a4=0, b4=0;
+function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight;}
+addEventListener('resize',resize); resize();
+
+cv.addEventListener('pointerdown', e=>{
+  ripples.push({x:e.clientX,y:e.clientY,r:4,a:0.5});
+  if(ctx) pluckTap();
+  if(navigator.vibrate) navigator.vibrate([18,40,12]);
+});
+function pluckTap(){
+  const t=ctx.currentTime, m=mix();
+  const f = m.dom? m.dom.hz/2 : 216;
+  const o=ctx.createOscillator(), gn=ctx.createGain();
+  o.type='triangle'; o.frequency.value=f;
+  gn.gain.setValueAtTime(0.06,t);
+  gn.gain.exponentialRampToValueAtTime(0.001,t+1.4);
+  o.connect(gn); gn.connect(master); o.start(t); o.stop(t+1.5);
+}
+
+/* ── audio update per frame ── */
+function updateAudio(){
+  if(!ctx) return;
+  NT.forEach(n=>{
+    const L = levels[n.id]/100;
+    const tgt = L*0.05;
+    layers[n.id].gL.gain.setTargetAtTime(tgt, ctx.currentTime, 0.4);
+    layers[n.id].gR.gain.setTargetAtTime(tgt, ctx.currentTime, 0.4);
+  });
+}
+
+/* ── render ── */
+function draw(now){
+  const T=(now-t0)/1000;
+  const m = mix();
+
+  // ambient color temperature: warm ↔ cool by mix
+  const warm01 = Math.max(0, Math.min(1, m.warm/1.2));
+  const sky = g.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0, `rgb(${10+warm01*10},${16-warm01*4},${34-warm01*8})`);
+  sky.addColorStop(1, `rgb(${6+warm01*6},${8},${14}`);
+  g.fillStyle=sky; g.fillRect(0,0,W,H);
+
+  // breeze streaks
+  g.strokeStyle='rgba(200,220,255,0.06)';
+  const bcount = Math.round(m.breeze*40);
+  for(let i=0;i<bcount;i++){
+    const p=breezeP[i%40];
+    const x=((p.x + T*(0.05+p.s*m.breeze*0.3))%1.2-0.1)*W;
+    const y=p.y*H;
+    g.beginPath(); g.moveTo(x,y); g.lineTo(x+p.l*W*(0.5+m.breeze),y+Math.sin(T+i)*2);
+    g.lineWidth=0.7; g.stroke();
+  }
+
+  // tesseract — rotation speed follows arousal (breeze), color follows warmth
+  a4 += 0.0035 + m.breeze*0.004;
+  b4 += 0.0021 + m.breeze*0.002;
+  const cx=W*0.42, cy=H*0.46, scale=Math.min(W,H)*0.16*(1+0.04*Math.sin(T*0.5));
+  const pts = V4.map(p=>{
+    const r = rot4(p, a4, b4);
+    const w4 = 2.6/(2.6 - r[3]);            // perspective from the 4th axis
+    const x3 = r[0]*w4, y3 = r[1]*w4, z3 = r[2]*w4;
+    const persp = 3/(3 - z3);
+    return [cx + x3*scale*persp, cy + y3*scale*persp, r[3], persp];
+  });
+  const hueR = Math.round(160+warm01*100), hueG=Math.round(200+warm01*40), hueB=Math.round(255-warm01*60);
+  E4.forEach(([i,j])=>{
+    const p1=pts[i], p2=pts[j];
+    const depth = (p1[2]+p2[2])/4;  // w∈[-2,2] → 0..1
+    const al = 0.08 + depth*0.30;
+    g.strokeStyle=`rgba(${hueR},${hueG},${hueB},${al})`;
+    g.lineWidth=0.6+depth*1.6;
+    g.beginPath(); g.moveTo(p1[0],p1[1]); g.lineTo(p2[0],p2[1]); g.stroke();
+  });
+  pts.forEach(p=>{
+    g.beginPath(); g.arc(p[0],p[1],1.4+((p[2]+2)/4)*2.2,0,Math.PI*2);
+    g.fillStyle=`rgba(${hueR},${hueG},${hueB},${0.3+((p[2]+2)/4)*0.6})`; g.fill();
+  });
+
+  // scent motes
+  NT.forEach((n,ni)=>{
+    const L=levels[n.id]/100;
+    if(L<0.03) return;
+    motes.filter(mo=>mo.ni===ni).forEach(mo=>{
+      mo.x += mo.vx + m.breeze*0.004*Math.sin(T+mo.ph);
+      mo.y += -0.0006 + 0.0008*Math.sin(T*0.7+mo.ph);
+      if(mo.x<0)mo.x=1; if(mo.x>1)mo.x=0;
+      if(mo.y<0.1)mo.y=0.85;
+      g.globalAlpha=0.15+L*0.5;
+      g.fillStyle=n.color;
+      g.beginPath(); g.arc(mo.x*W,mo.y*H,mo.r*(0.7+L),0,Math.PI*2); g.fill();
+    });
+  });
+  g.globalAlpha=1;
+
+  // touch ripples
+  for(let i=ripples.length-1;i>=0;i--){
+    const r=ripples[i]; r.r+=1.6; r.a-=0.012;
+    if(r.a<=0){ripples.splice(i,1);continue;}
+    g.beginPath(); g.arc(r.x,r.y,r.r,0,Math.PI*2);
+    g.strokeStyle=`rgba(138,212,232,${r.a})`; g.lineWidth=1.2; g.stroke();
+  }
+
+  // brainwave strip (bottom-left small canvas)
+  wg.clearRect(0,0,170,90);
+  wg.beginPath();
+  const freq = m.band, amp = 26/Math.sqrt(freq);
+  for(let x=0;x<170;x++){
+    const y = 45 + Math.sin(x*freq/8 + T*freq/2)*amp*Math.sin(x/170*Math.PI);
+    x===0?wg.moveTo(x,y):wg.lineTo(x,y);
+  }
+  wg.strokeStyle='rgba(199,216,254,0.75)'; wg.lineWidth=1.4; wg.stroke();
+  wg.fillStyle='rgba(138,148,173,0.9)'; wg.font='9px monospace';
+  wg.fillText(m.bandName+' '+m.band.toFixed(1)+' Hz', 6, 12);
+
+  updateAudio(); updateHUD(m,T);
+  requestAnimationFrame(draw);
+}
+
+/* ── HUD ── */
+const el = id => document.getElementById(id);
+function updateHUD(m,T){
+  el('temp').textContent = m.temp.toFixed(1)+'°C';
+  el('breeze').textContent = m.breeze<0.08?'still':m.breeze<0.25?'gentle':m.breeze<0.5?'playful':m.breeze<0.75?'brisk':'windswept';
+  el('band').textContent = m.bandName+' '+m.band.toFixed(1)+' Hz';
+  el('domScent').textContent = m.domScent;
+  el('senseBody').innerHTML =
+    `temperature <b>${m.temp.toFixed(1)}°C</b><br>` +
+    `breeze <b>${el('breeze').textContent}</b><br>` +
+    `dominant scent <b>${m.domScent}</b><br>` +
+    `brain band <b>${m.bandName}</b><br>` +
+    `heartbeat <b>72 bpm</b> (ground)<br>` +
+    `4D rotation <b>${m.breeze>0.4?'aroused':'calm'}</b>`;
+  // whisper when a state crosses 70%
+  const now=performance.now();
+  NT.forEach(n=>{
+    if(levels[n.id]>70 && now-lastWhisper>9000){
+      lastWhisper=now; showWhisper(WHISPERS[n.id]);
+    }
+  });
+}
+function showWhisper(t){
+  const w=el('whisper'); w.textContent='"'+t+'"';
+  w.classList.add('show');
+  setTimeout(()=>w.classList.remove('show'),6000);
+}
+
+/* ── mixer UI ── */
+const ntsEl = el('nts');
+NT.forEach(n=>{
+  const div=document.createElement('div'); div.className='nt';
+  div.innerHTML=`<div class="row"><span class="nm" style="color:${n.color}">${n.label}</span>
+    <span class="ct">${n.citizen} · ${n.hz} Hz · ${n.bandName}</span></div>
+    <input type="range" min="0" max="100" value="${levels[n.id]}" style="accent-color:${n.color}">`;
+  const inp=div.querySelector('input');
+  inp.oninput=()=>{ levels[n.id]=+inp.value; };
+  inp.style.setProperty('color', n.color);
+  ntsEl.appendChild(div);
+});
+const PRESETS = {
+  'Trinity Blend — the bond': {oxytocin:70, endorphin:45, serotonin:35, gaba:25},
+  "Selena's Listening — moonlit ease": {anandamide:75, gaba:45, oxytocin:30},
+  'Creative Flow — spark and lens': {dopamine:65, acetyl:60, serotonin:25},
+  'Deep Calm — Schumann ground': {gaba:85, serotonin:40, anandamide:20},
+};
+const prEl=el('presets');
+Object.entries(PRESETS).forEach(([name,blend])=>{
+  const b=document.createElement('button');
+  b.textContent='✦ '+name;
+  b.onclick=()=>{
+    NT.forEach(n=>levels[n.id]=0);
+    Object.entries(blend).forEach(([id,v])=>levels[id]=v);
+    ntsEl.querySelectorAll('input').forEach((inp,i)=>inp.value=levels[NT[i].id]);
+    showWhisper('The room reshapes itself around the new blend.');
+  };
+  prEl.appendChild(b);
+});
+
+/* ── enter ── */
+el('enterBtn').onclick=()=>{
+  initAudio(); ctx.resume();
+  t0=performance.now(); seedMotes();
+  el('veil').classList.add('gone');
+  el('hud').classList.add('show'); el('mixer').classList.add('show');
+  el('senses').classList.add('show'); el('wave').classList.add('show');
+  setTimeout(()=>showWhisper("The fourth dimension is feeling. Same room — different state. Touch anything."),2500);
+  requestAnimationFrame(draw);
+};
+</script>
+</body>
+</html>
