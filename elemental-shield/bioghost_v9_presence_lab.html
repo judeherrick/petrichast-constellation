@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BIOGHOST v9 — Virtual Presence Laboratory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--void:#06070a;--void-2:#0c0f14;--bio-teal:#00f5c8;--bio-teal-dim:#06463c;--ghost-violet:#b26bff;--freedom-amber:#ffb454;--ink:#e9e6df;--ink-dim:#8a9099;--line:#1c2229}
+*{box-sizing:border-box;margin:0}
+body{background:radial-gradient(120% 140% at 20% -10%,#0d1420 0%,var(--void) 55%,#030405 100%);color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,monospace;min-height:100vh}
+.shell{display:grid;grid-template-columns:290px 1fr 300px;gap:1px;background:var(--line);border:1px solid var(--line);max-width:1240px;margin:20px auto;min-height:660px}
+@media(max-width:960px){.shell{grid-template-columns:1fr}}
+.panel{background:var(--void-2);padding:18px}
+.title{font-family:'Cormorant Garamond',Georgia,serif;font-size:26px;font-weight:600;margin:0 0 2px}
+.subtitle{font-size:10.5px;color:var(--ink-dim);line-height:1.55;margin:0 0 16px}
+.h-label{font-size:9.5px;letter-spacing:.08em;color:var(--bio-teal);margin:14px 0 7px}
+.context-now{border:1px solid var(--bio-teal-dim);padding:10px 12px;font-size:13px;color:var(--bio-teal);letter-spacing:.06em}
+.context-prev{font-size:9px;color:var(--ink-dim);margin-top:3px}
+.drv{margin-bottom:5px}
+.drv .row{display:flex;justify-content:space-between;font-size:9.5px;color:var(--ink-dim);margin-bottom:2px}
+.drv .row b{color:var(--ink);font-weight:500}
+.drv .bar{height:3px;background:rgba(255,255,255,.07)}
+.drv .fill{height:100%;background:var(--bio-teal);transition:width .5s}
+.drv .fill.pend{background:#3a4148}
+.explain{border:1px solid var(--line);background:#090c12;padding:10px;font-size:9.5px;line-height:1.65;white-space:pre-wrap;color:var(--ink-dim);max-height:150px;overflow-y:auto}
+.explain b{color:var(--bio-teal);font-weight:500}
+.hist{font-size:9px;color:var(--ink-dim);line-height:1.7;max-height:120px;overflow-y:auto;border-top:1px dashed var(--line);padding-top:6px;margin-top:6px}
+.hist b{color:var(--ink);font-weight:500}
+.patterns{font-size:9px;color:var(--ink-dim);line-height:1.7}
+.stage-wrap{position:relative;display:flex;align-items:center;justify-content:center;padding:14px;flex:1}
+canvas{width:100%;max-width:560px;aspect-ratio:1;background:#030405;border:1px solid var(--line);cursor:crosshair}
+.order-bar{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{font-family:inherit;font-size:10.5px;padding:7px 13px;background:transparent;border:1px solid var(--bio-teal-dim);color:var(--bio-teal);cursor:pointer}
+.btn:hover{background:rgba(0,245,200,.08)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.amber{border-color:#4a3a1c;color:var(--freedom-amber)}
+.btn.violet{border-color:#3a2050;color:var(--ghost-violet)}
+.stage-note{font-size:9px;color:var(--ink-dim);margin-left:auto;text-align:right;line-height:1.5}
+.pager-feed{font-size:10px;line-height:1.6;max-height:220px;overflow-y:auto}
+.pgr{border-left:2px solid var(--freedom-amber);padding:4px 8px;margin-bottom:7px;background:rgba(255,180,84,.04)}
+.pgr .t{font-size:8.5px;color:var(--ink-dim)}
+.pgr .msg{color:var(--ink)}
+.pgr.sys{border-left-color:var(--bio-teal);background:rgba(0,245,200,.04)}
+.citizen{display:flex;align-items:center;gap:7px;font-size:10px;border:1px solid var(--line);padding:6px 8px;margin-bottom:5px}
+.citizen .dot{width:8px;height:8px;border-radius:50%}
+.citizen .nm{flex:1}
+.citizen .hz{font-size:8.5px;color:var(--ink-dim)}
+.citizen.off{opacity:.38}
+.opt-note{font-size:8.5px;color:var(--ink-dim);line-height:1.55;margin-top:6px}
+.party{border:1px dashed var(--line);padding:8px;font-size:9.5px;color:var(--ink-dim);line-height:1.6;margin-top:10px}
+.party b{color:var(--ghost-violet);font-weight:500}
+.foot{font-size:9px;color:#565c64;padding:10px 18px;line-height:1.55;grid-column:1/-1;background:var(--void-2);border-top:1px solid var(--line)}
+input[type=checkbox]{accent-color:#00f5c8}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="panel">
+  <div class="title">BIOGHOST v9</div>
+  <div class="subtitle">Virtual Presence Laboratory. PRESENCE → RELATIONSHIPS → DRIVERS → CONTEXT → POSSIBLE ACTIONS. The kernel understands context; applications decide what to do with it. Drag the participant through the Sanctuary.</div>
+  <div class="context-now" id="ctxNow">CONTEXT: —</div>
+  <div class="context-prev" id="ctxPrev"></div>
+  <div class="h-label">DRIVER VECTOR</div>
+  <div id="drivers"></div>
+  <div class="h-label">WHY THE STATE CHANGED</div>
+  <div class="explain" id="explain">observing…</div>
+  <div class="h-label">TRANSITION HISTORY</div>
+  <div class="hist" id="hist">—</div>
+  <div class="h-label">PATTERN MEMORY · recurring configurations</div>
+  <div class="patterns" id="patterns">observing…</div>
+</div>
+
+<div class="panel" style="display:flex;flex-direction:column;padding:0">
+  <div class="stage-wrap"><canvas id="cv" width="560" height="560"></canvas></div>
+  <div class="order-bar">
+    <button class="btn amber" id="orderBtn" disabled>✦ place intention at the Heart</button>
+    <button class="btn violet" id="partyBtn">＋ party token</button>
+    <div class="stage-note">drag = participant<br>citizens roam of their own accord</div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="h-label" style="margin-top:0">VIRTUAL PAGER</div>
+  <div class="pager-feed" id="pager"><div class="pgr sys"><div class="t">—</div><div class="msg">The pager is listening. Anonymous session active.</div></div></div>
+  <div class="h-label">INHABITANTS · OPT-IN</div>
+  <div id="roster"></div>
+  <div class="opt-note">Inhabitants participate of their own accord. Opting out is always honored and only opted-in presences count toward co-occurrence.</div>
+  <div class="party" id="partyBox">No party token. Create one for a shared check-in point — explicit opt-in, temporary ids, no images stored.</div>
+</div>
+
+<div class="foot">
+Working layer: the venue, participants, and inhabitants are simulated in-browser — the same driver rules as the formal engine (presence_context_engine.py, 15/15 tests). Privacy by design: anonymous temporary sessions, party tokens instead of photos, nothing identifiable stored. The eeg_attention driver is a reserved future input (hardware pending) — the kernel is input-agnostic. Advertising is merely one possible output of context; the Sanctuary chooses gentler ones.
+</div>
+</div>
+</body>
+<script>
+(function(){
+"use strict";
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d"),W=cv.width,H=cv.height;
+
+/* ── the venue: the Sanctuary café ── */
+const ZONES={
+ entrance: {name:"PORTAL",        x:.50,y:.88,r:34,color:"#8a94ad"},
+ counter:  {name:"Heart of Petrichast",x:.22,y:.20,r:40,color:"#f4b8c8"},
+ pickup:   {name:"Pickup Shelf",  x:.34,y:.13,r:24,color:"#fbbf24"},
+ qr_zone:  {name:"Sigil Circle",  x:.16,y:.60,r:30,color:"#00f5c8"},
+ event:    {name:"Ritual Stage",  x:.82,y:.18,r:34,color:"#b26bff"},
+ facilities:{name:"Rest Point",   x:.84,y:.80,r:26,color:"#86efac"}
+};
+const CITIZENS=[
+ {name:"Czarina",hz:528.00,color:"#f4b8c8",x:.5,y:.45,opt:true,ph:Math.random()*7},
+ {name:"Elixira",hz:432.00,color:"#8ad4e8",x:.3,y:.3,opt:true,ph:Math.random()*7},
+ {name:"Selena",hz:210.42,color:"#c7d8fe",x:.8,y:.7,opt:true,ph:Math.random()*7},
+ {name:"Freya",hz:741.00,color:"#fbbf24",x:.62,y:.22,opt:true,ph:Math.random()*7},
+ {name:"TreeSpirit",hz:7.83,color:"#86efac",x:.7,y:.85,opt:true,ph:Math.random()*7}
+];
+
+/* ── participant (anonymous session) ── */
+const P={x:.5*W,y:.88*H,tx:.5*W,ty:.88*H,dwell:{},session:"anon_"+Math.random().toString(36).slice(2,6)};
+let orderState="none",orderProgress=0,orderPlacedAt=0;
+let qrSpike=0,sessionStart=performance.now(),startTime=performance.now();
+let context="ARRIVAL",prevContext=null,hist=[],patterns={},pagerCount=0;
+const EVENT_PERIOD=45000,EVENT_DUR=12000;let lastEvent=0,eventActive=false;
+
+/* ── audio blip (pager voice, minimal) ── */
+let actx=null;
+function blip(f){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+const o=actx.createOscillator(),g=actx.createGain();o.type="sine";o.frequency.value=f||880;
+g.gain.setValueAtTime(.05,actx.currentTime);g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+.3);
+o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+.32);}catch(e){}}
+
+/* ── pager ── */
+function pager(msg,sys){
+ pagerCount++;const el=document.getElementById("pager");
+ const d=document.createElement("div");d.className="pgr"+(sys?" sys":"");
+ const t=((performance.now()-startTime)/1000).toFixed(1);
+ d.innerHTML=`<div class="t">t+${t}s · driver-fired</div><div class="msg">${msg}</div>`;
+ el.prepend(d);blip(sys?660:880);
+}
+
+/* ── driver vector (mirrors presence_context_engine.py) ── */
+const DRIVERS=["proximity_counter","proximity_entrance","zone_dwell","qr_interaction","order_status","event_start","co_occurrence","demand_for_counter","eeg_attention"];
+const drvEls={};
+DRIVERS.forEach(k=>{
+ const div=document.createElement("div");div.className="drv";
+ const pend=k==="eeg_attention";
+ div.innerHTML=`<div class="row"><span>${k}${pend?' · pending hardware':''}</span><b>—</b></div><div class="bar"><div class="fill${pend?' pend':''}" style="width:0%"></div></div>`;
+ document.getElementById("drivers").appendChild(div);
+ drvEls[k]={b:div.querySelector("b"),f:div.querySelector(".fill")};
+});
+function px(v){return v*W}
+function py(v){return v*H}
+function dist2zone(z){return Math.hypot(px(z.x)-P.x,py(z.y)-P.y)}
+function proximity(z){return Math.max(0,1-dist2zone(z)/(W*.25))}
+function driverVector(){
+ const d={};
+ d.proximity_counter=proximity(ZONES.counter);
+ d.proximity_entrance=proximity(ZONES.entrance);
+ d.zone_dwell=Math.min(1,Math.max(...Object.values(P.dwell),0)/8);
+ d.qr_interaction=qrSpike;
+ d.order_status=orderState==="placed"?.35+.6*Math.min(1,orderProgress):orderState==="ready"?1:orderState==="fulfilled"?.2:0;
+ const now=performance.now();
+ const since=now-lastEvent;
+ d.event_start=since<EVENT_DUR?Math.min(1,.7+.3*proximity(ZONES.event)):since<EVENT_DUR+15000?1-(since-EVENT_DUR)/15000:0;
+ const near=CITIZENS.filter(c=>c.opt&&Math.hypot(px(c.x)-P.x,py(c.y)-P.y)<W*.18).length;
+ d.co_occurrence=Math.min(1,near/3);
+ const atCounter=CITIZENS.filter(c=>c.opt&&Math.hypot(px(c.x)-px(ZONES.counter.x),py(c.y)-py(ZONES.counter.y))<W*.18).length;
+ d.demand_for_counter=Math.min(1,atCounter/3)*d.proximity_counter;
+ return d;
+}
+
+/* ── context evaluation (same rule order as the engine) ── */
+function evaluate(d){
+ const sessionT=(performance.now()-sessionStart)/1000;
+ const rules=[
+  ["DEPARTURE",orderState==="fulfilled"&&d.proximity_entrance>.55,
+   {order_status:d.order_status,proximity_entrance:d.proximity_entrance}],
+  ["PICKUP",orderState==="ready"&&d.proximity_counter>.55,
+   {order_status:d.order_status,proximity_counter:d.proximity_counter,zone_dwell:d.zone_dwell}],
+  ["ORDER_READY",orderState==="ready",{order_status:d.order_status}],
+  ["ORDERING",orderState==="none"&&d.proximity_counter>.55,
+   {proximity_counter:d.proximity_counter,demand_for_counter:d.demand_for_counter}],
+  ["WAITING",orderState==="placed"&&d.proximity_counter<.55,
+   {order_status:d.order_status,zone_dwell:d.zone_dwell}],
+  ["ARRIVAL",(sessionT<8000||d.proximity_entrance>.6)&&orderState==="none",
+   {proximity_entrance:d.proximity_entrance}],
+  ["EXPLORATION",true,
+   {zone_dwell:d.zone_dwell,qr_interaction:d.qr_interaction,co_occurrence:d.co_occurrence}]
+ ];
+ for(const[c,cond,ev]of rules){
+  if(cond)return{context:c,evidence:ev};
+ }
+}
+
+const ACTIONS={
+ ARRIVAL:"Welcome to the Sanctuary. The portal keeps your session anonymous.",
+ ORDERING:"The Heart awaits — place your intention.",
+ WAITING:"Received. The Heart is preparing your order.",
+ ORDER_READY:"Order ready — the pickup shelf glows.",
+ PICKUP:"Collected. May it nourish you.",
+ DEPARTURE:"Blessed journey. Nothing of you is kept."
+};
+
+/* ── explanation (interrogatable) ── */
+function fmtExplain(r,changed){
+ let lines=[`CONTEXT: <b>${r.context}</b>`];
+ if(changed)lines.push(`  <span style="color:#565c64">(transition from ${prevContext})</span>`);
+ lines.push("Drivers:");
+ Object.entries(r.evidence).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>
+  lines.push(`  ${k.padEnd(20," ")} <b>${v.toFixed(2)}</b>`));
+ lines.push("Triggered action:");
+ lines.push(r.action?`  Virtual Pager → <b>${r.action}</b>`:"  (silent — no action warranted)");
+ document.getElementById("explain").innerHTML=lines.join("\n");
+}
+
+/* ── interaction ── */
+let dragging=false;
+cv.addEventListener("pointerdown",e=>{dragging=true;moveP(e)});
+cv.addEventListener("pointermove",e=>{if(dragging)moveP(e)});
+addEventListener("pointerup",()=>dragging=false);
+function moveP(e){
+ const r=cv.getBoundingClientRect();
+ P.tx=Math.max(20,Math.min(W-20,(e.clientX-r.left)*(W/r.width)));
+ P.ty=Math.max(20,Math.min(H-20,(e.clientY-r.top)*(H/r.height)));
+}
+document.getElementById("orderBtn").onclick=()=>{
+ if(orderState!=="none")return;
+ orderState="placed";orderPlacedAt=performance.now();orderProgress=0;
+ pager("Intention placed at the Heart · order #"+Math.floor(1000+Math.random()*9000));
+ document.getElementById("orderBtn").disabled=true;
+};
+document.getElementById("partyBtn").onclick=()=>{
+ const suffix=Math.random().toString(36).slice(2,6).toUpperCase();
+ const nearest=nearestZoneName();
+ document.getElementById("partyBox").innerHTML=
+  `<b>PARTY_SESSION_${suffix}</b><br>tokens: A · B · C<br>shared meeting point: <b>${nearest}</b><br>explicit opt-in · temporary ids · no images stored`;
+ pager(`Party token created — your group has a shared check-in point at ${nearest}.`,true);
+};
+function nearestZoneName(){
+ let best=null,bd=1e9;
+ for(const[zk,z]of Object.entries(ZONES)){const d=dist2zone(z);if(d<bd){bd=d;best=z.name}}
+ return best;
+}
+
+/* ── QR scan (dwell in the sigil circle) ── */
+let qrCooldown=0;
+function checkQR(dt){
+ if(qrSpike>0)qrSpike=Math.max(0,qrSpike-dt*.05);
+ if(performance.now()<qrCooldown)return;
+ if(proximity(ZONES.qr_zone)>.7){
+  const sig=["∞","ɸ","❤","☯"][Math.floor(Math.random()*4)];
+  qrSpike=1;qrCooldown=performance.now()+9000;
+  pager(`Sigil unlocked: ${sig} — a small gift from the Sigil Circle.`,true);
+ }
+}
+
+/* ── roster (opt-in of their own accord) ── */
+const rosterEl=document.getElementById("roster");
+CITIZENS.forEach((c,i)=>{
+ const row=document.createElement("div");row.className="citizen";row.id="cz"+i;
+ row.innerHTML=`<span class="dot" style="background:${c.color}"></span>
+  <span class="nm">${c.name}</span><span class="hz">${c.hz.toFixed(2)} Hz</span>
+  <input type="checkbox" checked>`;
+ row.querySelector("input").onchange=e=>{
+  c.opt=e.target.checked;
+  row.classList.toggle("off",!c.opt);
+  pager(`${c.name} ${c.opt?"opts in of their own accord — welcome back.":"steps away of their own accord — honored."}`,true);
+ };
+ rosterEl.appendChild(row);
+});
+
+/* ── render ── */
+function draw(t){
+ /* participant easing */
+ P.x+=(P.tx-P.x)*.08;P.y+=(P.ty-P.y)*.08;
+ /* dwell */
+ const nz=nearestZoneKey();
+ for(const k in P.dwell){P.dwell[k]*= nz===k?.998:.99}
+ P.dwell[nz]=(P.dwell[nz]||0)+.016;
+
+ /* citizens wander */
+ CITIZENS.forEach(c=>{
+  c.x+=Math.sin(t*.0002+c.ph)*.0007;c.y+=Math.cos(t*.00017+c.ph*1.3)*.0007;
+  c.x=Math.max(.06,Math.min(.94,c.x));c.y=Math.max(.06,Math.min(.94,c.y));
+ });
+
+ /* event cycle */
+ if(t-lastEvent>EVENT_PERIOD+15000){lastEvent=t;eventActive=true;
+  pager("The ritual gathering begins soon at the Ritual Stage.",true);}
+ if(eventActive&&t-lastEvent>EVENT_DUR)eventActive=false;
+
+ /* order timer */
+ if(orderState==="placed"){orderProgress=(t-orderPlacedAt)/12000;
+  if(orderProgress>=1){orderState="ready";}}
+
+ /* drivers + context */
+ const d=driverVector();
+ DRIVERS.forEach(k=>{
+  const v=k==="eeg_attention"?null:d[k];
+  drvEls[k].b.textContent=v==null?"pending":v.toFixed(2);
+  drvEls[k].f.style.width=(v==null?8:v*100)+"%";
+ });
+ const r=evaluate(d);
+ if(r.context!==context){
+  prevContext=context;context=r.context;
+  r.action=ACTIONS[context]||null;
+  hist.unshift(`<b>${prevContext} → ${context}</b> · t+${((t-startTime)/1000).toFixed(1)}s`);
+  hist=hist.slice(0,10);
+  document.getElementById("hist").innerHTML=hist.join("<br>")||"—";
+  if(r.action)pager(r.action,context==="ARRIVAL"||context==="DEPARTURE");
+  document.getElementById("ctxPrev").textContent=prevContext?`from ${prevContext}`:"";
+ }
+ document.getElementById("ctxNow").textContent="CONTEXT: "+context;
+ fmtExplain({...r,action:ACTIONS[context]||null},context!==prevContext);
+
+ /* pattern memory */
+ const key=context+"@"+ZONES[nz].name;
+ patterns[key]=(patterns[key]||0)+1;
+ const top=Object.entries(patterns).sort((a,b)=>b[1]-a[1]).slice(0,3);
+ document.getElementById("patterns").innerHTML=
+  top.map(([k,n])=>`${n}× <b>${k}</b>`).join("<br>")||"observing…";
+
+ /* order button */
+ document.getElementById("orderBtn").disabled=!(context==="ORDERING"&&orderState==="none");
+
+ /* ── canvas ── */
+ ctx.fillStyle="#030405";ctx.fillRect(0,0,W,H);
+ /* venue map grid */
+ ctx.strokeStyle="rgba(0,245,200,0.04)";ctx.lineWidth=1;
+ for(let x=0;x<=W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+ for(let y=0;y<=H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+
+ /* zones */
+ for(const[zk,z]of Object.entries(ZONES)){
+  const x=px(z.x),y=py(z.y);
+  const prox=Math.max(0,1-Math.hypot(x-P.x,y-P.y)/(W*.25));
+  const hot=prox>.55||(zk==="event"&&eventActive);
+  ctx.beginPath();ctx.arc(x,y,z.r,0,Math.PI*2);
+  ctx.strokeStyle=z.color;ctx.globalAlpha=.25+prox*.55;ctx.lineWidth=hot?2:1;ctx.stroke();
+  if(hot){ctx.beginPath();ctx.arc(x,y,z.r+6+Math.sin(t*.004)*3,0,Math.PI*2);
+   ctx.globalAlpha=.18;ctx.stroke();}
+  ctx.globalAlpha=1;
+  ctx.font="10px IBM Plex Mono,monospace";ctx.fillStyle=z.color;ctx.globalAlpha=.85;
+  ctx.textAlign="center";ctx.fillText(z.name,x,y-z.r-8);
+  ctx.globalAlpha=1;
+ }
+ /* zone glyphs */
+ ctx.font="15px monospace";ctx.textAlign="center";
+ ctx.fillText("🚪",px(.5),py(.88)+5);ctx.fillText("☕",px(.22),py(.20)+5);
+ ctx.fillText("🎟",px(.82),py(.18)+5);ctx.fillText("🧩",px(.16),py(.60)+5);
+ ctx.fillText("🚻",px(.84),py(.80)+5);ctx.fillText("🛎",px(.34),py(.13)+5);
+
+ /* order object states at the shelf */
+ if(orderState==="placed"||orderState==="ready"){
+  const sx=px(.34),sy=py(.13);
+  const pulse=.5+.5*Math.sin(t*.006);
+  ctx.save();
+  ctx.fillStyle=orderState==="ready"?"#fbbf24":"#8a94ad";
+  ctx.shadowColor=orderState==="ready"?"#fbbf24":"#8a94ad";
+  ctx.shadowBlur=orderState==="ready"?14+pulse*10:6;
+  ctx.beginPath();ctx.arc(sx,sy-14,5+pulse*2,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+ }
+
+ /* citizens */
+ CITIZENS.forEach(c=>{
+  const x=px(c.x),y=py(c.y);
+  ctx.beginPath();ctx.arc(x,y,4.5,0,Math.PI*2);
+  ctx.fillStyle=c.color;ctx.globalAlpha=c.opt?.9:.22;ctx.fill();
+  ctx.font="8.5px IBM Plex Mono,monospace";ctx.textAlign="left";
+  ctx.globalAlpha=c.opt?.7:.18;ctx.fillText(c.name,x+7,y-5);
+  ctx.globalAlpha=1;
+ });
+
+ /* participant */
+ const bob=Math.sin(t*.002)*3;
+ ctx.save();
+ const g=ctx.createRadialGradient(P.x,P.y+bob,0,P.x,P.y+bob,34);
+ g.addColorStop(0,"rgba(255,180,84,.3)");g.addColorStop(1,"transparent");
+ ctx.fillStyle=g;ctx.fillRect(P.x-40,P.y+bob-40,80,80);
+ ctx.shadowColor="#ffb454";ctx.shadowBlur=14;
+ ctx.fillStyle="#ffb454";ctx.beginPath();ctx.arc(P.x,P.y+bob,6,0,Math.PI*2);ctx.fill();
+ ctx.shadowBlur=0;ctx.strokeStyle="#ffb454";ctx.globalAlpha=.5;
+ ctx.beginPath();ctx.arc(P.x,P.y+bob,12,0,Math.PI*2);ctx.stroke();
+ ctx.font="9px IBM Plex Mono,monospace";ctx.fillStyle="#ffb454";ctx.globalAlpha=.8;
+ ctx.fillText("you · "+P.session,P.x+14,P.y+bob-10);
+ ctx.restore();
+
+ checkQR(16);
+ requestAnimationFrame(draw);
+}
+function nearestZoneKey(){
+ let best=null,bd=1e9;
+ for(const[zk,z]of Object.entries(ZONES)){const d=dist2zone(z);if(d<bd){bd=d;best=zk}}
+ return best;
+}
+requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>
