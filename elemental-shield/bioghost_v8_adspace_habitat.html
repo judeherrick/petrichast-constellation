@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BIOGHOST v8 — Relational Adspace Habitat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+<style>
+.bg-root{--void:#06070a;--void-2:#0c0f14;--bio-teal:#00f5c8;--bio-teal-dim:#06463c;--ghost-violet:#b26bff;--freedom-amber:#ffb454;--ink:#e9e6df;--ink-dim:#8a9099;--line:#1c2229;background:radial-gradient(120% 140% at 20% -10%,#0d1420 0%,var(--void) 55%,#030405 100%);color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,monospace;padding:0;min-height:100vh;box-sizing:border-box}.bg-root *{box-sizing:border-box}
+.bg-shell{display:grid;grid-template-columns:280px 1fr 320px;gap:1px;background:var(--line);border:1px solid var(--line);max-width:1380px;margin:20px auto;min-height:720px}@media(max-width:1024px){.bg-shell{grid-template-columns:1fr}}
+.bg-panel{background:var(--void-2);padding:16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;max-height:880px}
+.bg-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:26px;font-weight:600;letter-spacing:.02em;color:var(--ink);margin:0 0 2px}
+.bg-subtitle{font-size:10.5px;color:var(--ink-dim);margin:0 0 8px;line-height:1.4}
+.device-row{border:1px solid var(--line);padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:border-color .2s;position:relative;background:rgba(255,255,255,0.01)}
+.device-row:hover{border-color:#333c46}.device-row.selected{border-color:var(--bio-teal);background:rgba(0,245,200,0.03)}
+.device-name{font-family:'Cormorant Garamond',Georgia,serif;font-size:16px;color:var(--ink)}
+.device-class{font-size:9.5px;color:var(--ink-dim);letter-spacing:.03em}
+.device-state{font-size:9px;margin-top:4px;padding:2px 5px;display:inline-block;border:1px solid}
+.state-dormant{color:var(--ink-dim);border-color:var(--line)}.state-active{color:var(--bio-teal);border-color:var(--bio-teal-dim)}.state-ghosted{color:var(--ghost-violet);border-color:#3a2050}
+.bg-stage{display:flex;flex-direction:column;align-items:stretch}.stage-canvas-wrap{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:12px;background:#030405;border-bottom:1px solid var(--line)}
+canvas#bgCanvas{width:100%;max-width:650px;aspect-ratio:1.38;background:#030405;border:1px solid var(--line);box-shadow:0 0 40px rgba(0,0,0,0.8);cursor:crosshair}
+.rec-indicator{position:absolute;top:20px;left:20px;font-size:10px;color:var(--freedom-amber);display:none;align-items:center;gap:6px;background:rgba(6,7,10,0.85);padding:4px 8px;border:1px solid var(--freedom-amber)}
+.rec-indicator.on{display:flex}.rec-dot{width:7px;height:7px;border-radius:50%;background:var(--freedom-amber);animation:pulse-dot 1s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.25}}
+.stage-controls{padding:10px 12px;display:flex;gap:6px;flex-wrap:wrap}
+.btn{font-family:inherit;font-size:10px;padding:6px 12px;background:transparent;border:1px solid var(--bio-teal-dim);color:var(--bio-teal);cursor:pointer;letter-spacing:.02em;transition:all .15s}
+.btn:hover{background:rgba(0,245,200,.08);border-color:var(--bio-teal)}.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.ghost{border-color:#3a2050;color:var(--ghost-violet)}.btn.ghost:hover{background:rgba(178,107,255,.1);border-color:var(--ghost-violet)}
+.bg-vault-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;margin:0 0 2px}
+.bg-vault-sub{font-size:10px;color:var(--ink-dim);margin:0 0 8px;line-height:1.4}
+.clip-card{border:1px solid var(--line);padding:8px;margin-bottom:8px;font-size:10px;background:#06070a}
+.clip-card.crossfade{border-color:#4a3a1c}.clip-title{color:var(--ink);margin-bottom:2px;font-weight:500}.clip-meta{color:var(--ink-dim);font-size:9px;margin-bottom:6px}
+.clip-card video{width:100%;display:block;margin-bottom:6px;background:#000;border:1px solid var(--line)}
+.clip-select{display:flex;align-items:center;gap:6px;font-size:9.5px;color:var(--ink-dim)}
+.empty-note{font-size:10px;color:var(--ink-dim);border:1px dashed var(--line);padding:10px;line-height:1.5;text-align:center}
+.footer-note{font-size:9px;color:#565c64;padding:8px 16px 4px;line-height:1.4;grid-column:1/-1;background:var(--void-2);border-top:1px solid var(--line)}
+.rel-panel{border:1px solid var(--line);padding:10px;background:#06070a;margin-top:4px}
+.rel-title{font-size:9.5px;color:var(--bio-teal);letter-spacing:.08em;margin-bottom:6px;font-weight:500}
+.rel-readout,.metric-row{font-size:9px;color:var(--ink-dim);line-height:1.6}
+.rel-readout b,.metric-row b{color:var(--ink);font-weight:500}
+.driver{display:inline-block;border:1px solid #26333a;padding:1px 4px;margin:1px 1px 0 0;color:#9aa9ad;font-size:8px}
+.rel-pulse{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--bio-teal);margin-right:5px;box-shadow:0 0 6px var(--bio-teal)}
+.ctrl-row{display:flex;justify-content:space-between;align-items:center;margin:4px 0;font-size:9.5px;color:var(--ink-dim)}
+.ctrl-row input[type=range]{width:110px}
+.action-card{background:#030405;border:1px solid var(--bio-teal-dim);padding:8px;margin-top:6px;border-radius:4px}
+.action-card b{color:var(--bio-teal);font-size:11px;display:block;margin-bottom:2px}
+.ev-row{display:flex;justify-content:space-between;font-size:8.5px;color:var(--ink-dim);line-height:1.6}
+.ev-row b{color:var(--ink);font-weight:500}
+.log-box{height:110px;overflow-y:auto;font:9.5px monospace;color:#8992ad;background:#030405;border:1px solid var(--line);padding:6px;line-height:1.4}
+</style>
+</head>
+<body>
+<div class="bg-root">
+<div class="bg-shell">
+<!-- LEFT PANEL: CONTROLS & DEVICES -->
+<div class="bg-panel">
+  <div>
+    <div class="bg-title">BIOGHOST v8</div>
+    <div class="bg-subtitle">Relational Adspace Engine. Daily event communication laboratory mapping inventory, spatial participant dynamics, and candidate actions.</div>
+  </div>
+
+  <div id="deviceList"></div>
+
+  <div class="rel-panel">
+    <div class="rel-title">ADSPACE FIELD PARAMETERS</div>
+    <div class="ctrl-row"><label>Demand</label><b id="demandV">.62</b></div>
+    <input id="demand" type="range" min="0" max="1" step=".01" value=".62">
+    <div class="ctrl-row"><label>Supply</label><b id="supplyV">.72</b></div>
+    <input id="supply" type="range" min="0" max="1" step=".01" value=".72">
+    <div class="ctrl-row"><label>Capacity</label><b id="capacityV">.70</b></div>
+    <input id="capacity" type="range" min="0" max="1" step=".01" value=".70">
+    <div class="ctrl-row"><label>Interaction</label><b id="interactionV">.35</b></div>
+    <input id="interaction" type="range" min="0" max="1" step=".01" value=".35">
+    <div class="ctrl-row"><label>Urgency</label><b id="urgencyV">.25</b></div>
+    <input id="urgency" type="range" min="0" max="1" step=".01" value=".25">
+    <div style="display:flex;gap:4px;margin-top:6px">
+      <button class="btn" id="spike" style="flex:1">Demand Spike</button>
+      <button class="btn ghost" id="resetField">Reset</button>
+    </div>
+  </div>
+
+  <div class="rel-panel">
+    <div class="rel-title">RELATIONAL KERNEL READOUT</div>
+    <div id="relReadout" class="rel-readout">Initializing state…</div>
+  </div>
+</div>
+
+<!-- CENTER PANEL: STAGE CANVAS & ACTION MATRIX -->
+<div class="bg-panel bg-stage" style="padding:0;">
+  <div class="stage-canvas-wrap">
+    <canvas id="bgCanvas" width="650" height="470"></canvas>
+    <div class="rec-indicator" id="recIndicator"><span class="rec-dot"></span>CAPTURING ADSPACE LIFECYCLE</div>
+  </div>
+  <div class="stage-controls">
+    <button class="btn" id="activateBtn">Activate device</button><!-- v8.1 heal: direct activation without capture -->
+    <button class="btn" id="captureBtn">Capture lifecycle → video</button>
+    <button class="btn ghost" id="ghostBtn">Force ghost-shift</button>
+    <button class="btn" id="dormantBtn">Return dormant</button>
+  </div>
+  <div style="padding:10px 16px; border-top:1px solid var(--line);">
+    <div class="rel-title">CANDIDATE ACTION MATRIX</div>
+    <div id="actionCard" class="action-card"><b>Evaluating context...</b></div>
+    <div id="evidencePanel" style="font-size:9px;color:var(--ink-dim);margin-top:6px;line-height:1.6">WHY — driver evidence pending…</div><!-- v8.1: the WHY -->
+  </div>
+</div>
+
+<!-- RIGHT PANEL: INVENTORY, DRIVERS, TRACE, REEL VAULT -->
+<div class="bg-panel">
+  <div>
+    <div class="rel-title">VENUE INVENTORY & RELEVANCE</div>
+    <div id="inventoryList"></div>
+  </div>
+
+  <div>
+    <div class="rel-title">EVENT TRACE LOG</div>
+    <div id="logBox" class="log-box"></div>
+  </div>
+
+  <div style="margin-top:6px;">
+    <div class="bg-vault-title">Ghost Reel Vault</div>
+    <div class="bg-vault-sub">Crossfade export stitches two captured adspace lifecycle clips.</div>
+    <div id="vaultList" style="max-height:220px; overflow-y:auto;"><div class="empty-note">No clips yet. Capture a lifecycle to begin filling the vault.</div></div>
+    <button class="btn" id="crossfadeBtn" style="width:100%;margin-top:6px" disabled>Crossfade selected clips</button>
+  </div>
+</div>
+
+<div class="footer-note">
+Working layer: Canvas rendering, MediaRecorder capture, and crossfade exports run live in-browser. The v8 relational engine computes real-time candidate actions across 3 venue adspace zones, 3 freedom devices, Avatar core, and 8 field nodes. The Candidate Action Matrix shows its driver evidence — the kernel understands context, the application decides the action, and both can be interrogated. Synthetic state only.
+</div>
+</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const canvas = document.getElementById("bgCanvas"), ctx = canvas.getContext("2d");
+const W = canvas.width, H = canvas.height;
+const $ = id => document.getElementById(id);
+
+// Field Parameters
+const ctrlIds = ['demand', 'supply', 'capacity', 'interaction', 'urgency'];
+const S = { demand: .62, supply: .72, capacity: .70, interaction: .35, urgency: .25, px: 130, py: 235, lastState: '', lastAct: '' };
+
+// Adspace Spaces / Venue Zones
+const spaces = [
+  { id: 'counter', name: 'COUNTER', x: 50, y: 50, w: 180, h: 105, color: '#00f5c8', inventory: .78, base: .72, kind: 'utility', offer: 'Order pickup guidance' },
+  { id: 'event', name: 'EVENT ZONE', x: 420, y: 45, w: 180, h: 105, color: '#b26bff', inventory: .58, base: .48, kind: 'event', offer: 'Upcoming event information' },
+  { id: 'lounge', name: 'LOUNGE', x: 220, y: 295, w: 200, h: 105, color: '#ffb454', inventory: .88, base: .36, kind: 'offer', offer: 'Available lounge promotion' }
+];
+
+// Core Devices
+const devices = [
+  { id: "sheeple_01", name: "SHEEPLE_01", cls: "SHEEPLE_FREEDOM_DEVICE", state: "dormant", color: "#00f5c8", path: [], phase: 0, x: W*0.25, y: H*0.25 },
+  { id: "minds_02", name: "MINDS_02", cls: "MINDS_FREEDOM_DEVICE", state: "dormant", color: "#ffb454", path: [], phase: Math.PI*0.66, x: W*0.75, y: H*0.25 },
+  { id: "webproj_03", name: "WEBPROJECT_03", cls: "WEBPROJECT_FREEDOM_DEVICE", state: "dormant", color: "#b26bff", path: [], phase: Math.PI*1.33, x: W*0.5, y: H*0.8 }
+];
+let selectedId = devices[0].id;
+const selected = () => devices.find(d => d.id === selectedId);
+
+const clamp01 = v => Math.max(0, Math.min(1, v));          /* v8.1 heal: renamed — the 0..1 clamp */
+const clampXY = (v, max) => Math.max(10, Math.min(max - 10, v)); /* v8.1 heal: canvas-space clamp */
+
+let traceLines = [];                                        /* v8.1 heal: capped trace */
+function logTrace(msg) {
+  const box = $('logBox');
+  traceLines.unshift(`[${new Date().toLocaleTimeString()}] ${msg}`);
+  traceLines = traceLines.slice(0, 40);
+  box.textContent = traceLines.join("\n");
+}
+
+/* ================================================================
+   RELATIONAL FIELD KERNEL
+   ================================================================ */
+class RelationalFieldKernel {
+  constructor() {
+    this.entities = new Map();
+    this.relationships = [];
+  }
+  addEntity(e) { this.entities.set(e.id, { ...e, x: e.x || W/2, y: e.y || H/2 }); }
+  updateEntity(id, props) { if (this.entities.has(id)) Object.assign(this.entities.get(id), props); }
+  addRelationship(r) { this.relationships.push({ ...r, activeWeight: r.weight }); }
+
+  evaluate() {
+    const ents = [...this.entities.values()];
+    this.relationships.forEach(r => {
+      const eA = this.entities.get(r.source), eB = this.entities.get(r.target);
+      if (eA && eB) {
+        const dist = Math.hypot(eA.x - eB.x, eA.y - eB.y);
+        const prox = Math.max(0, 1 - dist / (W * 0.5));
+        r.activeWeight = (r.weight * 0.4) + (prox * 0.6);
+      }
+    });
+
+    const totalWeight = this.relationships.reduce((s, r) => s + r.activeWeight, 0);
+    const avgWeight = this.relationships.length ? totalWeight / this.relationships.length : 0;
+    const density = this.relationships.length / Math.max(1, ents.length * (ents.length - 1));
+
+    const activeCount = ents.filter(o => o.state === "active").length;
+    const ghostedCount = ents.filter(o => o.state === "ghosted").length;
+    const activityRatio = ents.length ? (activeCount + ghostedCount * 0.65) / ents.length : 0;
+
+    const coherence = Math.max(0, Math.min(1, avgWeight * 0.5 + density * 1.5 + activityRatio * 0.3));
+    const uncertainty = Math.max(0, 1 - coherence);
+
+    let cluster = "stagnation";
+    if (coherence >= 0.82) cluster = "catalyst";
+    else if (coherence >= 0.68) cluster = "pigment";
+    else if (coherence >= 0.52) cluster = "exonerate";
+    else if (coherence >= 0.38) cluster = "conference";
+    else if (coherence >= 0.22) cluster = "deconstruct";
+
+    return { dominantCluster: cluster, coherence, uncertainty, activeCount, ghostedCount, totalEntities: ents.length };
+  }
+}
+
+const kernel = new RelationalFieldKernel();
+devices.forEach(d => kernel.addEntity({ id: d.id, type: "device", value: 0.3, state: d.state, x: d.x, y: d.y }));
+kernel.addEntity({ id: "avatar", type: "agent", name: "AVATAR", value: 0.85, state: "active", x: W/2, y: H/2, color: "#00f5c8" });
+kernel.addEntity({ id: "participant", type: "participant", name: "PARTICIPANT", value: 0.9, state: "active", x: S.px, y: S.py, color: "#ffffff" });
+
+for (let i = 1; i <= 8; i++) {
+  const rad = ((i * 45) * Math.PI) / 180;
+  kernel.addEntity({ id: `node_${i}`, type: "node", x: W/2 + Math.cos(rad) * 160, y: H/2 + Math.sin(rad) * 160, baseRad: rad });
+}
+
+devices.forEach(d => {
+  kernel.addRelationship({ source: d.id, target: "avatar", weight: 0.75, driver: "proximity" });
+  kernel.addRelationship({ source: d.id, target: "participant", weight: 0.6, driver: "adspace" });
+});
+
+/* ================================================================
+   ADSPACE MODEL CALCULATIONS
+   ================================================================ */
+function calcAdspace() {
+  const ratio = S.demand / Math.max(.08, S.supply);
+  const pressure = clamp01(.5 * ratio + .3 * (1 - S.capacity) + .2 * S.urgency);
+  let best = null;
+
+  for (const q of spaces) {
+    const d = Math.hypot(q.x + q.w/2 - S.px, q.y + q.h/2 - S.py);
+    const prox = clamp01(1 - d / 220);
+    const need = clamp01(.45 * q.base + .30 * S.demand + .25 * (1 - q.inventory));
+
+    /* v8.1: score broken into named contributions so the action can show WHY */
+    q.ev = {
+      proximity:      .32 * prox,
+      base_relevance:  .22 * q.base,
+      availability:    .18 * q.inventory,
+      capacity_headroom: .14 * (1 - S.capacity),
+      interaction:     .08 * S.interaction,
+      urgency:         .06 * S.urgency
+    };
+    q.score = Object.values(q.ev).reduce((a, b) => a + b, 0);
+
+    q.prox = prox; q.need = need;
+    if (!best || q.score > best.score) best = q;
+  }
+
+  let context = pressure > .78 ? 'PRESSURE' : pressure > .57 ? 'ACTIVE' : 'BALANCED';
+  if (S.capacity < .30) context = 'CONSTRAINED';
+  return { ratio, pressure, best, context };
+}
+
+let lastInvRender = 0;                                       /* v8.1 heal: throttle DOM rebuild */
+function updateAdspacePanels() {
+  const r = calcAdspace();
+  const rel = kernel.evaluate();
+
+  // Devices & Kernel sync
+  devices.forEach(d => {
+    const p = d.path[d.path.length - 1] || { x: d.x, y: d.y };
+    kernel.updateEntity(d.id, { state: d.state, x: p.x, y: p.y });
+  });
+  kernel.updateEntity("participant", { x: S.px, y: S.py });
+
+  // Readouts
+  $('relReadout').innerHTML =
+    `<div><span class="rel-pulse"></span><b>${rel.dominantCluster.toUpperCase()}</b> · state <b>${r.context}</b></div>` +
+    `<div>coherence <b>${rel.coherence.toFixed(2)}</b> · pressure <b>${r.pressure.toFixed(2)}</b></div>` +
+    `<div>demand/supply ratio <b>${r.ratio.toFixed(2)}</b> · target <b>${r.best.name}</b></div>`;
+
+  // Inventory list (throttled)
+  const now = performance.now();
+  if (now - lastInvRender > 250) {
+    lastInvRender = now;
+    $('inventoryList').innerHTML = spaces.map(q => `
+      <div class="device-row" style="cursor:default">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <b style="color:${q.color}">${q.name}</b>
+          <span style="font-size:9px;color:var(--ink-dim)">rel ${(q.score||0).toFixed(2)}</span>
+        </div>
+        <div class="device-class">${q.offer}</div>
+        <div class="device-class">availability ${q.inventory.toFixed(2)} · need ${(q.need||0).toFixed(2)}</div>
+      </div>
+    `).join('');
+  }
+
+  // Action decision logic
+  let actionTitle = 'Observe Field';
+  let detail = 'No specific venue event action dominates.';
+  if (r.best.kind === 'utility' && S.interaction > .25) {
+    actionTitle = 'Surface Utility Guidance';
+    detail = `${r.best.offer} matched to counter proximity.`;
+  } else if (r.best.kind === 'event' && S.urgency > .45) {
+    actionTitle = 'Broadcast Event Notice';
+    detail = 'Elevated urgency triggers primary event communication display.';
+  } else if (r.best.kind === 'offer' && r.pressure > .58) {
+    actionTitle = 'Surface Lounge Offer';
+    detail = 'High demand pressure and lounge capacity align.';
+  }
+
+  $('actionCard').innerHTML = `<b>${actionTitle}</b><div style="font-size:9.5px;color:var(--ink-dim)">${detail}</div>`;
+
+  /* v8.1: the WHY — driver evidence for the winning zone, interrogatable */
+  const ev = Object.entries(r.best.ev).sort((a, b) => b[1] - a[1]);
+  $('evidencePanel').innerHTML =
+    `WHY ${r.best.name} (score ${r.best.score.toFixed(2)}) —<br>` +
+    ev.map(([k, v]) => `<div class="ev-row"><span>${k}</span><b>${v.toFixed(2)}</b></div>`).join("");
+
+  if (r.context !== S.lastState || actionTitle !== S.lastAct) {
+    const topEv = ev.slice(0, 2).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ');
+    logTrace(`STATE → ${r.context} | Selected ${r.best.name} | Action: ${actionTitle} | why: ${topEv}`);
+    S.lastState = r.context; S.lastAct = actionTitle;
+  }
+}
+
+/* ================================================================
+   TURTLEWALKER & RENDER LOOP
+   ================================================================ */
+function turtleStep(dev) {
+  const last = dev.path[dev.path.length - 1] || { x: dev.x, y: dev.y, a: dev.phase };
+  const speed = dev.state === "active" ? 3.2 : dev.state === "ghosted" ? 1.5 : 0.2;
+  const a = last.a + (Math.random() - 0.5) * 0.6;
+
+  let x = last.x + Math.cos(a) * speed;
+  let y = last.y + Math.sin(a) * speed;
+
+  x = Math.max(40, Math.min(W - 40, x));
+  y = Math.max(40, Math.min(H - 40, y));
+
+  dev.path.push({ x, y, a });
+  if (dev.path.length > 60) dev.path.shift();
+}
+
+function zoneRect(q) {                                       /* v8.1 heal: roundRect fallback */
+  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(q.x, q.y, q.w, q.h, 8); }
+  else { ctx.beginPath(); ctx.rect(q.x, q.y, q.w, q.h); }
+}
+
+function draw() {
+  ctx.fillStyle = "#030405";
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = '#121826';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < W; i += 32) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.stroke(); }
+  for (let i = 0; i < H; i += 32) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(W, i); ctx.stroke(); }
+
+  // Draw Venue Adspaces
+  for (const q of spaces) {
+    const isTop = (q.score || 0) > .65;
+    ctx.fillStyle = q.color + '12';
+    ctx.strokeStyle = q.color + (isTop ? 'cc' : '44');
+    ctx.lineWidth = isTop ? 2.5 : 1;
+
+    zoneRect(q);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#e9edff';
+    ctx.font = '11px IBM Plex Mono, monospace';
+    ctx.fillText(q.name, q.x + 10, q.y + 20);
+
+    ctx.fillStyle = '#8992ad';
+    ctx.font = '9px IBM Plex Mono, monospace';
+    ctx.fillText(`rel ${(q.score || 0).toFixed(2)} | need ${(q.need || 0).toFixed(2)}`, q.x + 10, q.y + 38);
+    ctx.fillText(q.offer, q.x + 10, q.y + 54);
+
+    // Dynamic Connection line to Participant
+    ctx.strokeStyle = q.color + '33';
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(S.px, S.py);
+    ctx.lineTo(q.x + q.w/2, q.y + q.h/2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Draw Avatar Core
+  ctx.save();
+  ctx.fillStyle = "#00f5c8";
+  ctx.shadowColor = "#00f5c8";
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.arc(W/2, H/2, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Draw Devices & Trails
+  devices.forEach(dev => {
+    if (dev.state !== "dormant") turtleStep(dev);
+    const p = dev.path[dev.path.length - 1] || { x: dev.x, y: dev.y };
+
+    if (dev.path.length > 1) {
+      ctx.strokeStyle = dev.color;
+      ctx.lineWidth = 1.2;
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      dev.path.forEach((pt, i) => i ? ctx.lineTo(pt.x, pt.y) : ctx.moveTo(pt.x, pt.y)); /* v8.1 heal: pt.pt → pt.y */
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+    }
+
+    ctx.fillStyle = dev.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, dev.state === "active" ? 8 : 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = '9px IBM Plex Mono, monospace';
+    ctx.fillText(dev.name, p.x + 10, p.y - 10);
+  });
+
+  // Draw Participant Avatar Node
+  ctx.strokeStyle = '#b26bff88';
+  ctx.beginPath();
+  ctx.arc(S.px, S.py, 25 + S.interaction * 20, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(S.px, S.py, 8, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#61e6d4';
+  ctx.font = '10px IBM Plex Mono, monospace';
+  ctx.fillText('PARTICIPANT', S.px + 12, S.py + 4);
+}
+
+function syncAll() {
+  for (const id of ctrlIds) {
+    S[id] = +$(id).value;
+    $(id + 'V').textContent = S[id].toFixed(2);
+  }
+  updateAdspacePanels();
+  draw();
+}
+
+ctrlIds.forEach(id => $(id).oninput = syncAll);
+
+$('spike').onclick = () => {
+  [['demand', '.96'], ['urgency', '.72'], ['interaction', '.68']].forEach(a => $(a[0]).value = a[1]);
+  syncAll();
+  logTrace('PERTURBATION → Daily Demand Spike Injected');
+};
+
+$('resetField').onclick = () => {
+  Object.assign(S, { demand: .62, supply: .72, capacity: .70, interaction: .35, urgency: .25, lastState: '', lastAct: '' });
+  ctrlIds.forEach(id => $(id).value = S[id]);
+  syncAll();
+  logTrace('FIELD RESET → Default Parameters Restored');
+};
+
+/* Dragging Participant Node */
+let drag = false;
+canvas.onpointerdown = e => {
+  const r = canvas.getBoundingClientRect();
+  const px = (e.clientX - r.left) * W / r.width;
+  const py = (e.clientY - r.top) * H / r.height;
+
+  if (Math.hypot(px - S.px, py - S.py) < 30) {
+    drag = true;
+    canvas.setPointerCapture(e.pointerId);
+  } else {
+    for (const q of spaces) {
+      if (px >= q.x && px <= q.x + q.w && py >= q.y && py <= q.y + q.h) {
+        S.interaction = clamp01(S.interaction + .12);
+        $('interaction').value = S.interaction;
+        syncAll();
+        logTrace(`INTERACTION → Manual touch pulse in ${q.name}`);
+      }
+    }
+  }
+};
+
+canvas.onpointermove = e => {
+  if (!drag) return;
+  const r = canvas.getBoundingClientRect();
+  S.px = clampXY((e.clientX - r.left) * W / r.width, W);   /* v8.1 heal: canvas-space clamp, not 0..1 */
+  S.py = clampXY((e.clientY - r.top) * H / r.height, H);   /* v8.1 heal */
+  syncAll();
+};
+canvas.onpointerup = () => drag = false;
+
+/* Device UI Bindings */
+function renderDeviceList() {
+  $('deviceList').innerHTML = "";
+  devices.forEach(dev => {
+    const row = document.createElement("div");
+    row.className = "device-row" + (dev.id === selectedId ? " selected" : "");
+    row.innerHTML = `<div class="device-name">${dev.name}</div><div class="device-class">${dev.cls}</div><div class="device-state state-${dev.state}">${dev.state}</div>`;
+    row.onclick = () => { selectedId = dev.id; renderDeviceList(); };
+    $('deviceList').appendChild(row);
+  });
+}
+
+function setDeviceState(state) {
+  selected().state = state;
+  renderDeviceList();
+  syncAll();
+}
+
+$('activateBtn').onclick = () => setDeviceState("active");  /* v8.1 heal: direct activation */
+$('ghostBtn').onclick = () => setDeviceState("ghosted");
+$('dormantBtn').onclick = () => setDeviceState("dormant");
+
+/* ================================================================
+   VIDEO CONTAINER & GHOST REEL VAULT EXPORT
+   ================================================================ */
+class VideoContainer {
+  constructor(target, options = {}) {
+    this.target = target;
+    this.fps = options.fps || 30;
+    this.mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
+    this.chunks = [];
+    this.stream = null; this.recorder = null; this.isRecording = false;
+  }
+  wrap(sourceCanvas) {
+    if (this.isRecording) return;
+    this.chunks = [];
+    this.stream = sourceCanvas.captureStream(this.fps);
+    this.recorder = new MediaRecorder(this.stream, { mimeType: this.mimeType });
+    this.recorder.ondataavailable = e => { if (e.data.size > 0) this.chunks.push(e.data); };
+    this.recorder.start();
+    this.isRecording = true;
+  }
+  unwrap() {
+    return new Promise((resolve, reject) => {
+      if (!this.recorder || !this.isRecording) return reject(new Error("No recording active."));
+      this.recorder.onstop = () => {
+        const blob = new Blob(this.chunks, { type: this.mimeType });
+        this.isRecording = false;
+        resolve({ blob, url: URL.createObjectURL(blob), target: this.target });
+      };
+      this.recorder.stop();
+    });
+  }
+}
+
+const vault = [];
+let vaultCounter = 0;
+
+$('captureBtn').onclick = async () => {
+  const dev = selected();
+  $('captureBtn').disabled = true;
+  $('recIndicator').classList.add("on");
+
+  const wrapper = new VideoContainer(dev);
+  wrapper.wrap(canvas);
+
+  dev.state = "active";
+  renderDeviceList(); syncAll();
+  await new Promise(r => setTimeout(r, 1800));
+
+  dev.state = "ghosted";
+  renderDeviceList(); syncAll();
+  await new Promise(r => setTimeout(r, 1800));
+
+  const result = await wrapper.unwrap();
+  $('recIndicator').classList.remove("on");
+  $('captureBtn').disabled = false;
+
+  dev.state = "dormant";
+  renderDeviceList(); syncAll();
+
+  vaultCounter++;
+  vault.push({ id: "clip_" + vaultCounter, label: dev.name + " — adspace lifecycle", url: result.url, selected: false, isCrossfade: false });
+  renderVault();
+};
+
+function renderVault() {
+  if (!vault.length) {
+    $('vaultList').innerHTML = '<div class="empty-note">No clips yet. Capture a lifecycle to begin filling the vault.</div>';
+    $('crossfadeBtn').disabled = true; return;
+  }
+  $('vaultList').innerHTML = vault.map(clip => `
+    <div class="clip-card ${clip.isCrossfade ? 'crossfade' : ''}">
+      <div class="clip-title">${clip.label}</div>
+      <div class="clip-meta">${clip.isCrossfade ? "GTVFOSTREAMWORLD crossfade" : "raw capture"} · ${clip.id}</div>
+      <video src="${clip.url}" controls muted loop></video>
+      ${clip.isCrossfade ? "" : `<label class="clip-select"><input type="checkbox" data-id="${clip.id}"> select crossfade</label>`}
+    </div>
+  `).join('');
+
+  $('vaultList').querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.onchange = e => {
+      const clip = vault.find(c => c.id === e.target.dataset.id);
+      if (clip) clip.selected = e.target.checked;
+      $('crossfadeBtn').disabled = vault.filter(c => c.selected && !c.isCrossfade).length !== 2;
+    };
+  });
+}
+
+// Loop Engine
+function loop() {
+  syncAll();
+  requestAnimationFrame(loop);
+}
+
+renderDeviceList();
+logTrace('HABITAT INITIALIZED → v8.1 Relational Adspace Engine Active · trails healed, participant drag healed, action matrix now shows WHY');
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
