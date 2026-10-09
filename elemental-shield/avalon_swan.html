@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Swan of Avalon — Consent-Driven Presence</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(circle at 72% 30%, #0d1526 0%, #05080f 60%, #010203 100%);
+    color: #cfe8ff;
+    font-family: 'IBM Plex Mono', monospace;
+    overflow: hidden;
+    height: 100vh; width: 100vw;
+  }
+  #stage { position: absolute; inset: 0; cursor: crosshair; }
+  #hud {
+    position: absolute; top: 16px; left: 16px;
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #7fd6ff; opacity: 0.85; line-height: 1.7; pointer-events: none;
+  }
+  #hud .label { color: #4a90a8; }
+  .bar { display: inline-block; width: 90px; height: 4px; background: rgba(127,214,255,0.12); vertical-align: middle; margin-left: 8px; }
+  .bar i { display: block; height: 100%; background: #7fd6ff; transition: width 0.3s; }
+  #hud .demand-bar i { background: #ff9f7f; }
+  #status {
+    position: absolute; top: 16px; right: 16px;
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: #ff9f7f; max-width: 260px; text-align: right; opacity: 0.9; pointer-events: none;
+    line-height: 1.7;
+  }
+  #plaque {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    font-size: 9.5px; letter-spacing: 0.06em; color: #6a7a96;
+    border: 1px solid rgba(127,214,255,0.18); background: rgba(3,6,12,0.55);
+    padding: 8px 14px; text-align: center; line-height: 1.8; pointer-events: none;
+    max-width: 92vw;
+  }
+  #plaque .hint { color: #9fc8dd; text-transform: uppercase; letter-spacing: 0.14em; }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div id="hud">
+  <div><span class="label">presence</span> SWAN_OF_AVALON</div>
+  <div><span class="label">regard</span><span id="regardV">0.00</span><span class="bar"><i id="regardBar" style="width:0%"></i></span></div>
+  <div class="demand-bar"><span class="label">demand</span><span id="demandV">0.00</span><span class="bar"><i id="demandBar" style="width:0%"></i></span></div>
+  <div><span class="label">state</span> <span id="stateV">receptive</span></div>
+  <div><span class="label">chime</span> <span id="chimeV">still</span></div>
+</div>
+<div id="status"></div>
+<div id="plaque">
+  <span class="hint">approach slowly · she may withdraw · no summon exists</span><br>
+  imbued by Truemylooma (gentle weight · permission to settle) · Bloominessencephala (the indigo-amber-violet tide) · Elixira (the soft internal chime)<br>
+  the right to withdraw is absolute
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// THE SWAN OF AVALON — consent-driven presence
+// New medium: REGARD AS A DRIVER. The quality of attention
+// (approach speed, dwell patience, demand spikes) governs her
+// visibility. She folds her light under demand and returns only
+// through calm, distance, and her own patience.
+// Mirrors create_IoART/regard_engine.py (10/10 tests).
+// Honest note: regard is a proxy computed from pointer behavior;
+// the simulation honors the narrative; it does not pretend to be it.
+// ════════════════════════════════════════════════════════════
+(function () {
+"use strict";
+
+const cv = document.getElementById('stage'), ctx = cv.getContext('2d');
+let W = 0, H = 0;
+function resize() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
+resize(); addEventListener('resize', resize);
+
+/* ── regard engine (JS mirror of regard_engine.py) ── */
+const SLOW = 140, FAST = 520, CLICK = 0.34;
+const R_GAIN = 0.16, D_GAIN = 0.55, R_DECAY = 0.04, D_DECAY = 0.10;
+const DIM_T = 0.45, WD_T = 0.62, CHIME_T = 0.52, CALM_S = 7, RET_DIST = 480;
+const eng = {
+  regard: 0, demand: 0, state: 'receptive', chimed: false,
+  withdrawnAt: -1e9, lastEv: null, lastAct: 0,
+  patience: 3 + Math.random() * 6, note: ''
+};
+function near() { return Math.min(W, H) * 0.26; }
+function distTo(px, py) { return Math.hypot(px - swan.x, py - swan.y); }
+function feed(px, py, t, click) {
+  let speed = 0;
+  if (eng.lastEv) {
+    const dt = Math.max(0.003, t - eng.lastEv.t);
+    speed = Math.hypot(px - eng.lastEv.x, py - eng.lastEv.y) / dt;
+  }
+  eng.lastEv = { x: px, y: py, t: t }; eng.lastAct = t;
+  const d = distTo(px, py), NR = near();
+  if (eng.state !== 'withdrawn' && d < NR) {
+    if (click) { eng.demand = Math.min(1, eng.demand + CLICK); eng.chimed = false; chimeSilent(); }
+    else if (speed > FAST) { eng.demand = Math.min(1, eng.demand + D_GAIN * 0.25); eng.chimed = false; }
+    else if (speed < SLOW) {
+      const closeness = 1 - d / NR;
+      eng.regard = Math.min(1, eng.regard + R_GAIN * closeness * 0.5);
+    }
+  } else if (d < NR * 1.6 && speed > FAST) {
+    eng.demand = Math.min(1, eng.demand + D_GAIN * 0.1);
+  }
+}
+function stepEngine(now) {
+  eng.regard = Math.max(0, eng.regard - R_DECAY * 0.016);
+  eng.demand = Math.max(0, eng.demand - D_DECAY * 0.016);
+  if (eng.state === 'receptive' && eng.demand >= WD_T) {
+    eng.state = 'withdrawn'; eng.withdrawnAt = now;
+    setStatus('she folds her light and passes into the mist');
+  } else if (eng.state === 'receptive' && eng.demand >= DIM_T) eng.state = 'dimming';
+  else if (eng.state === 'dimming') {
+    if (eng.demand < DIM_T * 0.5) eng.state = 'receptive';
+    else if (eng.demand >= WD_T) { eng.state = 'withdrawn'; eng.withdrawnAt = now; setStatus('she folds her light and passes into the mist'); }
+  } else if (eng.state === 'withdrawn') {
+    eng.regard = 0;
+    const calm = (now - eng.withdrawnAt) > CALM_S;
+    const quiet = (now - eng.lastAct) > CALM_S * 0.8;
+    const far = !eng.lastEv || distTo(eng.lastEv.x, eng.lastEv.y) > RET_DIST;
+    if (calm && quiet && far && (now - eng.withdrawnAt) > CALM_S + eng.patience) {
+      eng.state = 'receptive'; eng.demand = 0; eng.chimed = false;
+      setStatus('she returns, on her own timing');
+    }
+  }
+  if (eng.state === 'receptive' && eng.regard >= CHIME_T && !eng.chimed && eng.demand < 0.2) {
+    eng.chimed = true; chimeSound();
+  }
+}
+
+/* ── the chime — not a summons; a greeting ── */
+let AC = null;
+function chimeSound() {
+  try {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    const t = AC.currentTime;
+    [[432, 0.025], [854, 0.006]].forEach(([f, g]) => {
+      const o = AC.createOscillator(), gn = AC.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      gn.gain.setValueAtTime(0.0001, t);
+      gn.gain.exponentialRampToValueAtTime(g, t + 0.6);
+      gn.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
+      o.connect(gn); gn.connect(AC.destination);
+      o.start(t); o.stop(t + 3);
+    });
+    document.getElementById('chimeV').textContent = 'I see you seeing me';
+    setStatus('the chime — almost too quiet to hear');
+    setTimeout(() => document.getElementById('chimeV').textContent = 'still', 4000);
+  } catch (e) {}
+}
+function chimeSilent() { document.getElementById('chimeV').textContent = 'silent'; }
+function setStatus(msg) { document.getElementById('status').textContent = msg; }
+
+/* ── input ── */
+let lastPt = null;
+addEventListener('pointermove', e => {
+  const t = performance.now() / 1000;
+  feed(e.clientX, e.clientY, t, false);
+});
+addEventListener('pointerdown', e => {
+  feed(e.clientX, e.clientY, performance.now() / 1000, true);
+});
+
+/* ── the swan ── */
+const swan = { x: 0, y: 0, phase: 0, glow: 0, presence: 1, dipT: -10 };
+const HOME = () => ({ x: W * 0.34, y: H * 0.58 });
+const INLET_R = () => ({ x: W * 1.25, y: H * 0.52 });
+const INLET_L = () => ({ x: -W * 0.25, y: H * 0.55 });
+
+/* fish — translucent silver and pale gold */
+const fish = [];
+function initFish() {
+  fish.length = 0;
+  for (let i = 0; i < 11; i++) fish.push({
+    x: Math.random() * W, y: H * (0.6 + Math.random() * 0.25),
+    a: Math.random() * 6.28, sp: 0.5 + Math.random() * 0.7,
+    ph: Math.random() * 6.28, gold: Math.random() < 0.3, scatter: 0
+  });
+}
+initFish(); addEventListener('resize', initFish);
+
+/* crystal pattern points along neck + body */
+const CRYSTALS = [];
+(function () {
+  for (let i = 0; i < 9; i++) CRYSTALS.push({ t: 0.18 + i * 0.08, side: 0, ph: i * 0.7 });     // neck
+  for (let i = 0; i < 14; i++) CRYSTALS.push({ t: -1, side: (i % 2) ? 1 : -1, ph: 2 + i * 0.5 }); // body
+})();
+const TIDE = ['#6a7bff', '#ffb454', '#b26bff']; // Bloominessencephala's indigo-amber-violet
+
+/* light trails on the water */
+const trails = [];
+
+/* mist veils */
+const mists = [];
+function initMist() {
+  mists.length = 0;
+  for (let i = 0; i < 4; i++) mists.push({
+    x: Math.random() * W, y: H * (0.55 + Math.random() * 0.2),
+    w: W * (0.3 + Math.random() * 0.4), h: 30 + Math.random() * 50,
+    v: 6 + Math.random() * 10, ph: Math.random() * 6
+  });
+}
+initMist(); addEventListener('resize', initMist);
+
+function swanNeck(t) { // bezier: body → head
+  const bx = swan.x, by = swan.y;
+  const c1x = bx + 26, c1y = by - 34, c2x = bx + 18, c2y = by - 62, ex = bx + 2, ey = by - 74;
+  const m = 1 - t, k0 = m * m * m, k1 = 3 * m * m * t, k2 = 3 * m * t * t, k3 = t * t * t;
+  return {
+    x: k0 * bx + k1 * c1x + k2 * c2x + k3 * ex,
+    y: k0 * by + k1 * c1y + k2 * c2y + k3 * ey + Math.sin(swan.phase * 0.9) * 2
+  };
+}
+
+function draw(now) {
+  ctx.clearRect(0, 0, W, H);
+
+  /* sky + moon */
+  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+  sky.addColorStop(0, '#02030a'); sky.addColorStop(1, '#0a1224');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H * 0.55);
+  const moon = ctx.createRadialGradient(W * 0.74, H * 0.16, 4, W * 0.74, H * 0.16, 90);
+  moon.addColorStop(0, 'rgba(214,226,255,0.9)'); moon.addColorStop(0.25, 'rgba(190,205,240,0.28)'); moon.addColorStop(1, 'transparent');
+  ctx.fillStyle = moon; ctx.fillRect(W * 0.74 - 100, H * 0.16 - 100, 200, 200);
+
+  /* castle silhouette — present, never imposing */
+  const cx0 = W * 0.78, cy0 = H * 0.42;
+  ctx.fillStyle = 'rgba(8,12,26,0.9)';
+  ctx.beginPath();
+  ctx.moveTo(cx0, cy0); ctx.lineTo(cx0 + 14, cy0 - 26); ctx.lineTo(cx0 + 20, cy0 - 26);
+  ctx.lineTo(cx0 + 26, cy0 - 54); ctx.lineTo(cx0 + 32, cy0 - 26); ctx.lineTo(cx0 + 44, cy0 - 32);
+  ctx.lineTo(cx0 + 44, cy0 + 6); ctx.lineTo(cx0, cy0 + 6); ctx.closePath(); ctx.fill();
+
+  /* water */
+  const wat = ctx.createLinearGradient(0, H * 0.5, 0, H);
+  wat.addColorStop(0, '#0a1626'); wat.addColorStop(1, '#04070f');
+  ctx.fillStyle = wat; ctx.fillRect(0, H * 0.5, W, H * 0.5);
+  for (let y = H * 0.52; y < H; y += 6) {
+    const sway = Math.sin(y * 0.05 + now * 0.0006) * 14;
+    ctx.strokeStyle = `rgba(90,130,190,${0.05 + 0.04 * Math.sin(y * 0.3 + now * 0.001)})`;
+    ctx.beginPath(); ctx.moveTo(sway, y); ctx.lineTo(W + sway, y); ctx.stroke();
+  }
+  /* moon path on water */
+  for (let y = H * 0.55; y < H; y += 5) {
+    const wob = Math.sin(y * 0.2 + now * 0.001) * 6;
+    ctx.fillStyle = `rgba(200,214,245,${0.10 * (1 - (y - H * 0.55) / H)})`;
+    ctx.fillRect(W * 0.74 - 18 + wob, y, 36, 2);
+  }
+
+  /* fish */
+  fish.forEach(f => {
+    f.a += Math.sin(now * 0.0004 + f.ph) * 0.02;
+    const orbit = eng.state === 'withdrawn' ? 1 : 0;
+    const tx = orbit ? W * 0.5 : swan.x + Math.cos(f.a) * (70 + f.ph * 20);
+    const ty = orbit ? H * 0.8 : H * 0.68 + Math.sin(f.a * 2 + f.ph) * 26;
+    if (f.scatter > 0.02) {
+      f.x += Math.cos(f.a) * f.scatter * 6; f.y += Math.sin(f.a) * f.scatter * 4 - f.scatter;
+      f.scatter *= 0.96;
+    } else {
+      f.x += (tx - f.x) * 0.004 * (f.sp + 0.3);
+      f.y += (ty - f.y) * 0.004;
+    }
+    ctx.save();
+    ctx.globalAlpha = 0.34 + 0.2 * Math.sin(now * 0.002 + f.ph);
+    ctx.fillStyle = f.gold ? '#e8c98a' : '#b8c8e0';
+    ctx.beginPath();
+    ctx.ellipse(f.x, f.y, 7, 2.4, f.a, 0, 6.28); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(f.x - Math.cos(f.a) * 7, f.y - Math.sin(f.a) * 7);
+    ctx.lineTo(f.x - Math.cos(f.a) * 12, f.y - Math.sin(f.a) * 12 - 3);
+    ctx.lineTo(f.x - Math.cos(f.a) * 12, f.y - Math.sin(f.a) * 12 + 3);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  });
+
+  /* light trails */
+  for (let i = trails.length - 1; i >= 0; i--) {
+    const tr = trails[i];
+    tr.a -= 0.008;
+    if (tr.a <= 0) { trails.splice(i, 1); continue; }
+    ctx.fillStyle = tr.c.replace('ALPHA', tr.a.toFixed(3));
+    ctx.beginPath(); ctx.ellipse(tr.x, tr.y + 3, 3, 1.4, 0, 0, 6.28); ctx.fill();
+  }
+
+  /* the swan */
+  const dip = Math.exp(-Math.pow((now / 1000 - swan.dipT) / 0.6, 2)) * 8;
+  ctx.save();
+  ctx.globalAlpha = swan.presence;
+  /* body */
+  const sheen = 0.25 + swan.glow * 0.5;
+  ctx.fillStyle = `rgba(${Math.round(10 + sheen * 28)}, ${Math.round(12 + sheen * 34)}, ${Math.round(22 + sheen * 52)}, 1)`;
+  ctx.beginPath();
+  ctx.ellipse(swan.x, swan.y + dip, 30, 15, -0.12, 0, 6.28); ctx.fill();
+  /* tail */
+  ctx.beginPath();
+  ctx.moveTo(swan.x - 26, swan.y - 4 + dip);
+  ctx.quadraticCurveTo(swan.x - 48, swan.y - 14 + dip, swan.x - 40, swan.y + 8 + dip);
+  ctx.closePath(); ctx.fill();
+  /* neck */
+  ctx.strokeStyle = `rgba(${Math.round(16 + sheen * 30)}, ${Math.round(18 + sheen * 36)}, ${Math.round(30 + sheen * 56)}, 1)`;
+  ctx.lineWidth = 7; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(swan.x, swan.y + dip);
+  for (let t = 0; t <= 1.001; t += 0.08) {
+    const p = swanNeck(t); p.y += dip * (1 - t);
+    if (t === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke();
+  /* head + beak */
+  const hp = swanNeck(1); hp.y += dip * 0;
+  ctx.fillStyle = `rgba(${Math.round(14 + sheen * 26)}, ${Math.round(16 + sheen * 30)}, ${Math.round(28 + sheen * 46)}, 1)`;
+  ctx.beginPath(); ctx.ellipse(hp.x, hp.y - 2, 6, 5, 0.3, 0, 6.28); ctx.fill();
+  ctx.fillStyle = '#c8a44e';
+  ctx.beginPath(); ctx.moveTo(hp.x + 4, hp.y - 2); ctx.lineTo(hp.x + 16, hp.y + 1 + dip * 0.5); ctx.lineTo(hp.x + 4, hp.y + 2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#dfe7ff';
+  ctx.beginPath(); ctx.arc(hp.x + 1, hp.y - 3, 1.2, 0, 6.28); ctx.fill();
+  ctx.restore();
+
+  /* crystal bioluminescent patterns */
+  if (swan.presence > 0.05) {
+    CRYSTALS.forEach(c => {
+      let px2, py2;
+      if (c.t >= 0) { const p = swanNeck(c.t); px2 = p.x + c.side * 4; py2 = p.y + dip * (1 - c.t); }
+      else { px2 = swan.x - 14 + (c.side + 1) * 12; py2 = swan.y - 8 + ((c.ph * 7) % 18) + dip; }
+      const breathe = 0.5 + 0.5 * Math.sin(now * 0.0016 + c.ph * 2.1);
+      const bright = swan.glow * (0.35 + breathe * 0.65);
+      const col = TIDE[Math.floor(c.ph) % 3];
+      ctx.save();
+      ctx.globalAlpha = bright * swan.presence;
+      ctx.shadowColor = col; ctx.shadowBlur = 8 * bright + 2;
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(px2, py2, 1.1 + breathe * 0.8, 0, 6.28); ctx.fill();
+      ctx.restore();
+      if (breathe > 0.75 && Math.random() < 0.05 && eng.state === 'receptive') {
+        trails.push({ x: px2, y: py2, a: 0.32 * bright, c: `rgba(150,170,255,ALPHA)` });
+      }
+    });
+  }
+
+  /* mist veils — they deepen when she withdraws */
+  const mistBoost = eng.state === 'withdrawn' ? 2.2 : 1;
+  mists.forEach(mst => {
+    mst.x += mst.v * 0.016; if (mst.x - mst.w / 2 > W) mst.x = -mst.w / 2;
+    const g = ctx.createRadialGradient(mst.x, mst.y, 4, mst.x, mst.y, mst.w / 2);
+    g.addColorStop(0, `rgba(140,160,200,${0.045 * mistBoost})`);
+    g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g;
+    ctx.save(); ctx.translate(mst.x, mst.y + Math.sin(now * 0.0004 + mst.ph) * 6);
+    ctx.scale(1, mst.h / (mst.w / 2));
+    ctx.beginPath(); ctx.arc(0, 0, mst.w / 2, 0, 6.28); ctx.fill(); ctx.restore();
+  });
+
+  /* HUD */
+  document.getElementById('regardV').textContent = eng.regard.toFixed(2);
+  document.getElementById('demandV').textContent = eng.demand.toFixed(2);
+  document.getElementById('regardBar').style.width = (eng.regard * 100) + '%';
+  document.getElementById('demandBar').style.width = (eng.demand * 100) + '%';
+  const st = document.getElementById('stateV');
+  st.textContent = eng.state;
+  st.style.color = eng.state === 'withdrawn' ? '#ff9f7f' : eng.state === 'dimming' ? '#e8c98a' : '#7fe0a6';
+}
+
+/* ── movement + loop ── */
+function update(now) {
+  swan.phase += 0.016;
+  if (eng.state === 'withdrawn') {
+    const R = INLET_R();
+    swan.x += (R.x - swan.x) * 0.006;
+    swan.y += (R.y - swan.y) * 0.006;
+    swan.presence = Math.max(0, swan.presence - 0.008);
+  } else if (swan.presence < 1) {
+    const home = HOME();
+    swan.x += (home.x - swan.x) * 0.004; swan.y += (home.y - swan.y) * 0.004;
+    swan.presence = Math.min(1, swan.presence + 0.004);
+  } else {
+    const home = HOME();
+    swan.x = home.x + Math.sin(swan.phase * 0.3) * 30;
+    swan.y = home.y + Math.sin(swan.phase * 0.5) * 8;
+    if (Math.random() < 0.0015) { swan.dipT = now / 1000; fish.forEach(f => f.scatter = 1); }
+  }
+  if (swan.presence < 0.03) { const L = INLET_L(); swan.x = L.x; swan.y = L.y; }
+  const targetGlow = eng.state === 'withdrawn' ? 0 : (eng.state === 'dimming' ? 0.25 : 0.35 + eng.regard * 0.65);
+  swan.glow += (targetGlow - swan.glow) * 0.03;
+
+  stepEngine(now / 1000);
+}
+
+(function loop(now) {
+  update(now || performance.now());
+  draw(now || performance.now());
+  requestAnimationFrame(loop);
+})();
+
+setStatus('the swan rests at the boundary of sanctuary and Avalon');
+})();
+</script>
+</body>
+</html>

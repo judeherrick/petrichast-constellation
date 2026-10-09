@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nautiloid Mirror — Live Feed Renderer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(circle at 50% 40%, #050810 0%, #000000 100%);
+    color: #cfe8ff;
+    font-family: 'IBM Plex Mono', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+  #stage { position: absolute; inset: 0; }
+  #hud {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7fd6ff;
+    opacity: 0.85;
+    line-height: 1.6;
+    pointer-events: none;
+  }
+  #hud .label { color: #4a90a8; }
+  #status {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #ff9f7f;
+    max-width: 240px;
+    text-align: right;
+    opacity: 0.9;
+  }
+  #preview-wrap {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 160px;
+    height: 120px;
+    border: 1px solid rgba(127, 214, 255, 0.35);
+    border-radius: 4px;
+    overflow: hidden;
+    background: #000;
+    display: none;
+  }
+  #preview-wrap.live { display: block; }
+  #preview { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); filter: hue-rotate(60deg) saturate(0.6) brightness(0.8); }
+  #panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 14px 18px 18px;
+    background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .row label {
+    width: 92px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9fc8dd;
+  }
+  input[type=range] {
+    flex: 1;
+    accent-color: #7fd6ff;
+  }
+  input[type=range]:disabled { opacity: 0.3; }
+  .buttons { display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+  button {
+    background: rgba(127, 214, 255, 0.08);
+    border: 1px solid rgba(127, 214, 255, 0.35);
+    color: #cfe8ff;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 7px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  button:hover { background: rgba(127, 214, 255, 0.18); border-color: #7fd6ff; }
+  button.active { background: rgba(127, 214, 255, 0.3); border-color: #7fd6ff; }
+  button.live-toggle.active { background: rgba(118, 0, 255, 0.35); border-color: #b07fff; }
+  #pulse-flash {
+    position: absolute;
+    inset: 0;
+    background: #7600ff;
+    opacity: 0;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div id="pulse-flash"></div>
+<div id="preview-wrap"><video id="preview" autoplay muted playsinline></video></div>
+<div id="hud">
+  <div><span class="label">device</span> NAUTILOID_MIRROR_DEVICE</div>
+  <div><span class="label">chambers</span> <span id="hud-chambers">0</span> / <span id="hud-max">89</span></div>
+  <div><span class="label">growth phase</span> <span id="hud-phase">0</span></div>
+  <div><span class="label">whorl</span> <span id="hud-whorl">0</span></div>
+  <div><span class="label">source</span> <span id="hud-source">manual</span></div>
+</div>
+<div id="status"></div>
+
+<div id="panel">
+  <div class="row">
+    <label>Bass</label>
+    <input type="range" id="bass" min="0" max="1" step="0.01" value="0.3">
+  </div>
+  <div class="row">
+    <label>Treble</label>
+    <input type="range" id="treble" min="0" max="1" step="0.01" value="0.4">
+  </div>
+  <div class="row">
+    <label>Motion</label>
+    <input type="range" id="motion" min="0" max="1" step="0.01" value="0.05">
+  </div>
+  <div class="buttons">
+    <button id="live-btn" class="live-toggle">Live Feed: Off</button>
+    <button id="auto-btn">Auto Drift: Off</button>
+    <button id="reset-btn">Reset Shell</button>
+  </div>
+</div>
+
+<script>
+// Mirrors the growth math in NAUTILOID_MIRROR_DEVICE (nautiloid_mirror_device.py).
+const PHI = 1.6180339887;
+const GOLDEN_ANGLE = 137.5 * Math.PI / 180;
+const SPAWN_THRESHOLD = 0.15;
+const MAX_CHAMBERS = 89;
+const WHORL_SIZE = 8;
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+let chambers = [];
+let growthPhase = 0;
+let flashAlpha = 0;
+
+const bassSlider = document.getElementById('bass');
+const trebleSlider = document.getElementById('treble');
+const motionSlider = document.getElementById('motion');
+const autoBtn = document.getElementById('auto-btn');
+const liveBtn = document.getElementById('live-btn');
+const resetBtn = document.getElementById('reset-btn');
+const flashEl = document.getElementById('pulse-flash');
+const statusEl = document.getElementById('status');
+const sourceEl = document.getElementById('hud-source');
+const previewWrap = document.getElementById('preview-wrap');
+const previewVideo = document.getElementById('preview');
+
+let autoDrift = false;
+let liveMode = false;
+
+// ---- Live MediaStream wiring ----
+let videoEl, videoStream;
+let diffCanvas, diffCtx;
+let prevFrame = null;
+const DIFF_W = 64, DIFF_H = 48;
+
+let audioCtx, analyser, freqData;
+
+let liveMotion = 0, liveBass = 0, liveTreble = 0;
+const SMOOTH = 0.75; // exponential smoothing factor
+
+async function startLiveFeed() {
+  statusEl.textContent = 'requesting camera + mic...';
+  try {
+    videoStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 320, height: 240, facingMode: 'user' },
+      audio: true
+    });
+  } catch (err) {
+    statusEl.textContent = 'permission denied or no device: ' + err.message;
+    liveMode = false;
+    liveBtn.textContent = 'Live Feed: Off';
+    liveBtn.classList.remove('active');
+    return false;
+  }
+
+  videoEl = previewVideo;
+  videoEl.srcObject = videoStream;
+  previewWrap.classList.add('live');
+
+  diffCanvas = document.createElement('canvas');
+  diffCanvas.width = DIFF_W;
+  diffCanvas.height = DIFF_H;
+  diffCtx = diffCanvas.getContext('2d', { willReadFrequently: true });
+  prevFrame = null;
+
+  const audioTracks = videoStream.getAudioTracks();
+  if (audioTracks.length) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = audioCtx.createMediaStreamSource(videoStream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    freqData = new Uint8Array(analyser.frequencyBinCount);
+    src.connect(analyser);
+  }
+
+  statusEl.textContent = '';
+  return true;
+}
+
+function stopLiveFeed() {
+  if (videoStream) {
+    videoStream.getTracks().forEach(tr => tr.stop());
+  }
+  previewWrap.classList.remove('live');
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  prevFrame = null;
+}
+
+function sampleMotionFromVideo() {
+  if (!videoEl || videoEl.readyState < 2) return 0;
+  diffCtx.drawImage(videoEl, 0, 0, DIFF_W, DIFF_H);
+  const frame = diffCtx.getImageData(0, 0, DIFF_W, DIFF_H).data;
+
+  if (!prevFrame) {
+    prevFrame = frame;
+    return 0;
+  }
+
+  let sum = 0;
+  // sample luminance diff, step by 4 (skip alpha) across every pixel
+  for (let i = 0; i < frame.length; i += 4) {
+    const lumaNow = (frame[i] + frame[i + 1] + frame[i + 2]) / 3;
+    const lumaPrev = (prevFrame[i] + prevFrame[i + 1] + prevFrame[i + 2]) / 3;
+    sum += Math.abs(lumaNow - lumaPrev);
+  }
+  prevFrame = frame;
+
+  const avgDiff = sum / (DIFF_W * DIFF_H); // 0-255 range roughly
+  return Math.min(1, avgDiff / 40); // empirical scaling — tune to your lighting
+}
+
+function sampleAudioBands() {
+  if (!analyser) return { bass: 0, treble: 0 };
+  analyser.getByteFrequencyData(freqData);
+  const n = freqData.length;
+  const bassEnd = Math.floor(n * 0.15);
+  const trebleStart = Math.floor(n * 0.5);
+
+  let bassSum = 0;
+  for (let i = 0; i < bassEnd; i++) bassSum += freqData[i];
+  const bass = bassSum / bassEnd / 255;
+
+  let trebleSum = 0;
+  for (let i = trebleStart; i < n; i++) trebleSum += freqData[i];
+  const treble = trebleSum / (n - trebleStart) / 255;
+
+  return { bass, treble };
+}
+
+liveBtn.addEventListener('click', async () => {
+  if (!liveMode) {
+    const ok = await startLiveFeed();
+    if (ok) {
+      liveMode = true;
+      autoDrift = false;
+      autoBtn.textContent = 'Auto Drift: Off';
+      autoBtn.classList.remove('active');
+      liveBtn.textContent = 'Live Feed: On';
+      liveBtn.classList.add('active');
+      sourceEl.textContent = 'camera + mic';
+      [bassSlider, trebleSlider, motionSlider].forEach(s => s.disabled = true);
+    }
+  } else {
+    liveMode = false;
+    stopLiveFeed();
+    liveBtn.textContent = 'Live Feed: Off';
+    liveBtn.classList.remove('active');
+    sourceEl.textContent = 'manual';
+    [bassSlider, trebleSlider, motionSlider].forEach(s => s.disabled = false);
+  }
+});
+
+autoBtn.addEventListener('click', () => {
+  if (liveMode) return;
+  autoDrift = !autoDrift;
+  autoBtn.textContent = 'Auto Drift: ' + (autoDrift ? 'On' : 'Off');
+  autoBtn.classList.toggle('active', autoDrift);
+});
+resetBtn.addEventListener('click', () => {
+  chambers = [];
+  growthPhase = 0;
+});
+
+function growChamber(bass, treble) {
+  const i = chambers.length;
+  const angle = i * GOLDEN_ANGLE;
+  const radius = Math.pow(PHI, i / 8) * (0.5 + bass * 0.5);
+  chambers.push({
+    index: i,
+    angle,
+    radius,
+    scale: Math.pow(PHI, i / 12),
+    hue: (180 + treble * 120) % 360,
+    bornAt: performance.now(),
+  });
+  growthPhase++;
+  if (growthPhase % WHORL_SIZE === 0) triggerWhorlPulse();
+}
+
+function triggerWhorlPulse() {
+  flashAlpha = 0.35;
+  document.getElementById('hud-whorl').textContent = growthPhase / WHORL_SIZE;
+  // Visual stand-in for _ecp_pulse_brightness() firing on the real Roku.
+}
+
+function updateHud() {
+  document.getElementById('hud-chambers').textContent = chambers.length;
+  document.getElementById('hud-phase').textContent = growthPhase;
+}
+
+let t = 0;
+function tick() {
+  t += 1;
+  let bass, treble, motion;
+
+  if (liveMode) {
+    const rawMotion = sampleMotionFromVideo();
+    const bands = sampleAudioBands();
+    liveMotion = liveMotion * SMOOTH + rawMotion * (1 - SMOOTH);
+    liveBass = liveBass * SMOOTH + bands.bass * (1 - SMOOTH);
+    liveTreble = liveTreble * SMOOTH + bands.treble * (1 - SMOOTH);
+    bass = liveBass; treble = liveTreble; motion = liveMotion;
+    bassSlider.value = bass.toFixed(2);
+    trebleSlider.value = treble.toFixed(2);
+    motionSlider.value = motion.toFixed(2);
+  } else {
+    bass = parseFloat(bassSlider.value);
+    treble = parseFloat(trebleSlider.value);
+    motion = parseFloat(motionSlider.value);
+    if (autoDrift) {
+      motion = 0.15 + Math.abs(Math.sin(t * 0.03)) * 0.5;
+      motionSlider.value = motion.toFixed(2);
+    }
+  }
+
+  if (motion >= SPAWN_THRESHOLD && chambers.length < MAX_CHAMBERS && t % 4 === 0) {
+    growChamber(bass, treble);
+  }
+
+  render(bass, treble);
+  updateHud();
+
+  if (flashAlpha > 0) {
+    flashAlpha *= 0.9;
+    flashEl.style.opacity = flashAlpha.toFixed(3);
+  }
+
+  requestAnimationFrame(tick);
+}
+
+function render(bass, treble) {
+  const w = canvas.width, h = canvas.height;
+  ctx.fillStyle = 'rgba(2, 4, 10, 0.25)';
+  ctx.fillRect(0, 0, w, h);
+
+  const cx = w / 2, cy = h / 2;
+  const fitScale = Math.min(w, h) / 26;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(127, 214, 255, 0.15)';
+  ctx.lineWidth = 1;
+  chambers.forEach((c, idx) => {
+    const x = Math.cos(c.angle) * c.radius * fitScale;
+    const y = Math.sin(c.angle) * c.radius * fitScale;
+    if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  chambers.forEach((c) => {
+    const x = Math.cos(c.angle) * c.radius * fitScale;
+    const y = Math.sin(c.angle) * c.radius * fitScale;
+    const age = Math.min(1, (performance.now() - c.bornAt) / 400);
+    const r = Math.max(1.5, c.scale * 1.4 * (0.4 + bass * 0.6)) * age;
+
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+    grad.addColorStop(0, `hsla(${c.hue}, 90%, 70%, ${0.85 * age})`);
+    grad.addColorStop(0.4, `hsla(${c.hue}, 85%, 55%, ${0.35 * age})`);
+    grad.addColorStop(1, 'hsla(0,0%,0%,0)');
+
+    ctx.beginPath();
+    ctx.fillStyle = grad;
+    ctx.arc(x, y, r * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.fillStyle = `hsla(${c.hue}, 95%, ${75 + treble * 15}%, ${age})`;
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  const coreR = 10 + bass * 14;
+  const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, coreR * 3);
+  coreGrad.addColorStop(0, 'rgba(255,255,255,0.5)');
+  coreGrad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.beginPath();
+  ctx.fillStyle = coreGrad;
+  ctx.arc(0, 0, coreR * 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+tick();
+</script>
+</body>
+</html>
