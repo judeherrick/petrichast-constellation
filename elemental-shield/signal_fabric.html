@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Emergent Signal Fabric — Observatory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--void:#06070a;--void-2:#0c0f14;--teal:#00f5c8;--teal-dim:#06463c;--violet:#b26bff;--amber:#ffb454;--ink:#e9e6df;--dim:#8a9099;--line:#1c2229}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:radial-gradient(120% 140% at 20% -10%,#0d1420 0%,var(--void) 55%,#030405 100%);color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,monospace;padding:14px}
+.shell{display:grid;grid-template-columns:270px 1fr 300px;gap:1px;background:var(--line);border:1px solid var(--line);max-width:1400px;margin:0 auto;min-height:780px}
+@media(max-width:1080px){.shell{grid-template-columns:1fr}}
+.panel{background:var(--void-2);padding:14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;max-height:900px}
+h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:23px;font-weight:600}
+.sub{font-size:10px;color:var(--dim);line-height:1.45}
+.sec{font-size:9.5px;color:var(--teal);letter-spacing:.08em;font-weight:500;margin-top:4px}
+.node{border:1px solid var(--line);padding:6px 9px;margin-bottom:5px;font-size:10px;background:rgba(255,255,255,.01)}
+.node b{font-family:'Cormorant Garamond',Georgia,serif;font-size:14px;font-weight:600}
+.chip{display:inline-block;font-size:8.5px;border:1px solid #26333a;color:#9aa9ad;padding:1px 5px;margin-left:5px}
+.chip.air{color:var(--teal);border-color:var(--teal-dim)}
+.chip.wire{color:var(--amber);border-color:#4a3a1c}
+.chip.ground{color:var(--violet);border-color:#3a2050}
+.btn{font-family:inherit;font-size:10px;padding:6px 10px;background:transparent;border:1px solid var(--teal-dim);color:var(--teal);cursor:pointer;transition:all .15s}
+.btn:hover{background:rgba(0,245,200,.08);border-color:var(--teal)}
+.btn.ghost{border-color:#3a2050;color:var(--violet)}
+.btn.amber{border-color:#4a3a1c;color:var(--amber)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.row{display:flex;gap:5px;flex-wrap:wrap}
+.stage{position:relative;display:flex;align-items:center;justify-content:center;padding:10px;background:#030405;border-bottom:1px solid var(--line)}
+canvas{width:100%;max-width:700px;aspect-ratio:1.48;background:#030405;border:1px solid var(--line);cursor:crosshair}
+.legend{display:flex;gap:12px;padding:8px 14px;border-top:1px solid var(--line);font-size:9px;color:var(--dim);flex-wrap:wrap}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.log{height:300px;overflow-y:auto;font:9.5px monospace;color:#8992ad;background:#030405;border:1px solid var(--line);padding:6px;line-height:1.45}
+.log b{color:var(--teal);font-weight:400}
+.field{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim)}
+.field input{width:70px;background:#05040a;border:1px solid var(--line);color:var(--ink);font-family:inherit;font-size:10px;padding:4px 6px;outline:none}
+.res-card{border:1px solid var(--line);background:#06070a;padding:8px;font-size:9.5px;color:var(--dim);line-height:1.6}
+.res-card b{color:var(--ink);font-weight:500}
+.bar{height:7px;background:#0b1126;border:1px solid var(--line);margin-top:5px;position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--teal),var(--violet))}
+.spell{border:1px solid var(--line);padding:7px 9px;margin-bottom:5px;font-size:10px;cursor:pointer}
+.spell:hover{border-color:var(--violet)}
+.spell.sel{border-color:var(--violet);background:rgba(178,107,255,.06)}
+.spell small{color:var(--dim);font-size:9px;display:block}
+.foot{grid-column:1/-1;font-size:9px;color:#565c64;padding:8px 14px;background:var(--void-2);border-top:1px solid var(--line);line-height:1.45}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- LEFT -->
+<div class="panel">
+  <div>
+    <h1>Emergent Signal Fabric</h1>
+    <div class="sub">Air · Wire · Ground · Echo · Sprite. Every directed path can return.</div>
+  </div>
+
+  <div class="sec">NODES</div>
+  <div id="nodeList"></div>
+
+  <div class="sec">EMIT</div>
+  <div class="row">
+    <button class="btn" id="emitAir">Air event</button>
+    <button class="btn amber" id="emitWire">Wire event</button>
+    <button class="btn ghost" id="emitGround">Ground event</button>
+  </div>
+  <div class="row">
+    <button class="btn ghost" id="roundTrip">Round-trip (echo)</button>
+  </div>
+  <div class="row">
+    <button class="btn" id="pipeline">Pipeline ×4</button>
+    <button class="btn ghost" id="sweep">Reverse sweep</button>
+  </div>
+
+  <div class="sec">BOUNDED RESONANCE</div>
+  <div class="field"><label>seed</label><input id="seed" type="number" value="2" step="0.5" min="0"></div>
+  <div class="res-card" id="resCard">—</div>
+</div>
+
+<!-- CENTER -->
+<div class="panel" style="padding:0">
+  <div class="stage">
+    <canvas id="stage" width="700" height="473"></canvas>
+  </div>
+  <div class="legend">
+    <span><i class="dot" style="background:#00f5c8"></i>AIR → nymph_ble</span>
+    <span><i class="dot" style="background:#ffb454"></i>WIRE → backend</span>
+    <span><i class="dot" style="background:#b26bff"></i>GROUND → entity</span>
+    <span><i class="dot" style="background:#ffffff"></i>ECHO → return path</span>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="panel">
+  <div class="sec">GOLEM SPELLS</div>
+  <div id="spellList"></div>
+  <div class="row">
+    <button class="btn" id="runGolem" style="flex:1">Run golem program</button>
+  </div>
+  <div id="golemStatus" class="sub">No program running.</div>
+
+  <div class="sec">FABRIC LOG</div>
+  <div class="log" id="log"></div>
+</div>
+
+<div class="foot">
+Working layer: the fabric routes events between named nodes, animates every transmission, and executes golem programs in browser. Jude's signal system is preserved verbatim (events, Wire, WireGround, SpriteGround, Echo, SpriteGolem, true_pattern, true_path); the fabric, round-trips, and spells are the extension. Synthetic state only — no literal transmission, no sentience claimed. true_pattern grows as (2a)^(3a): the bounded form caps at 1e12 and reports log-magnitude honestly.
+</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const cv = $('stage'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+/* ─── Jude's math, preserved ─── */
+function reverseEcho(sig){
+  if(typeof sig === 'string') return sig.split('').reverse().join('');
+  if(Array.isArray(sig)) return sig.slice().reverse();
+  if(sig && typeof sig === 'object'){ const o={}; for(const k in sig) o[sig[k]]=k; return o; }
+  return sig;
+}
+function truePattern(a){ const base=a+a; return Math.pow(base,a)*Math.pow(base,base); }
+function truePath(a,fromSelf=true,toSelf=true){ const s=(Math.trunc(a)^(fromSelf?1:0))*a; return (toSelf?1:0)*a+s+a; }
+const CEILING=1e12;
+function boundedPattern(a){
+  const raw=truePattern(a), capped=raw>CEILING;
+  return {seed:a, value:capped?CEILING:raw, capped, log10: raw>0?Math.log10(raw):null,
+          exponent:`(2a)^(3a) = ${(2*a).toPrecision(3)}^${(3*a).toPrecision(3)}`};
+}
+function boundedPath(a,f=true,t=true){ const raw=truePath(a,f,t); return {seed:a,value:raw>CEILING?CEILING:raw,capped:raw>CEILING,fromSelf:f,toSelf:t}; }
+
+/* ─── Channels ─── */
+const CHANNELS = {
+  AIR:{label:'nymph_ble', color:'#00f5c8', note:'Nimbus BLE frames'},
+  WIRE:{label:'backend_function', color:'#ffb454', note:'the wire'},
+  GROUND:{label:'entity_record', color:'#b26bff', note:'the ground'},
+  ECHO:{label:'return_path', color:'#ffffff', note:'avatar becomes catalyst'}
+};
+
+/* ─── Fabric ─── */
+class SignalFabric{
+  constructor(){ this.nodes={}; this.log=[]; this.roundTrips=0; this.golems=[]; this.pulses=[]; }
+  addNode(name, channel, x, y, note=''){ this.nodes[name]={channel,x,y,note,rx:0,tx:0}; this.write(`NODE +${name} [${channel}]`); return this; }
+  nodeNames(){ return Object.keys(this.nodes); }
+  write(msg){ const t=new Date().toLocaleTimeString(); this.log.unshift(`[${t}] ${msg}`); if(this.log.length>200)this.log.pop(); renderLog(); }
+  emit(from,to,klass,signal,payload){
+    const pkt={from,to,klass,signal,payload};
+    if(this.nodes[from]) this.nodes[from].tx++;
+    if(this.nodes[to]){ this.nodes[to].rx++; this.write(`${from} → ${to} | ${klass} | signal=${signal}`); }
+    else this.write(`${from} → ${to} (unknown node — logged, not delivered)`);
+    this.animate(from,to,CHANNELS[this.nodes[from]?this.nodes[from].channel:'WIRE'].color,klass);
+    return pkt;
+  }
+  animate(from,to,color,label){
+    const a=this.nodes[from], b=this.nodes[to]; if(!a||!b) return;
+    this.pulses.push({a,b,t:0,color,label});
+  }
+  roundTrip(from,to,klass,signal,payload){
+    this.emit(from,to,klass,signal,payload);
+    /* Jude's primitive, live: the return leg carries the signal reversed */
+    const raw = (typeof payload === 'string') ? payload : ((payload && payload.msg) || klass);
+    const reversed = reverseEcho(raw);
+    this.write(`ECHO reverses the signal: '${reversed}' \u2190 '${raw}'`);
+    const back=this.emit(to,from,klass+' (echo)',signal,{echo_of:payload,reversed});
+    this.roundTrips++;
+    this.write(`ROUND-TRIP complete | ${klass}`);
+    return back;
+  }
+  pipeline(evs){ evs.forEach(e=>this.emit(e.from,e.to,e.klass,e.signal,{step:'pipeline'})); this.write(`PIPELINE ran | ${evs.length} events`); }
+  reverseSweep(evs){ evs.forEach(e=>{const t=e.from;e.from=e.to;e.to=t;}); this.write(`REVERSE SWEEP | ${evs.length} events flipped`); return evs; }
+  attachGolem(g){ this.golems.push(g); this.write(`GOLEM attached ${g.source} → ${g.target} (${g.program.length} steps queued)`); }
+  runGolem(g, onStep, onDone){
+    let i=0;
+    const step=()=>{
+      if(i>=g.program.length){ this.write(`GOLEM program complete | ${i} steps`); onDone&&onDone(); return; }
+      const cmd=g.commands[g.program[i]]; const result=cmd();
+      const from=g.source, to=g.target;
+      this.write(`GOLEM step → ${result}`);
+      this.animate(from,to,'#ffffff','golem');
+      onStep&&onStep(result,i);
+      i++;
+      setTimeout(step, 700);
+    };
+    step();
+  }
+}
+
+/* ─── Spells ─── */
+const SIGILS=['∞','ɸ','❤','☯'];
+function glowspriterSpell(){ const s=[]; for(let c=0;c<7;c++){const g=SIGILS[c%4]; s.push(()=>`cycle ${c+1}/7 · sigil ${g} amplifies all`);} s.push(()=>'SEAL — crystalline essence at coherence 1.0'); return s; }
+function nymphBroadcastSpell(){ return [
+  ()=>'SELENA 16B 210.42 Hz (hold 0.15s)', ()=>'AIR 17B 285.00 Hz (hold 2.0s)',
+  ()=>'SELENA 16B 210.42 Hz (hold 0.15s)', ()=>'MIRROR 18B 432.00 Hz (hold 5.0s)',
+  ()=>'SELENA 16B 210.42 Hz (hold 0.15s)', ()=>'AURA 19B 396.00 Hz (hold 10.0s)'];
+}
+function thesibyloomSpell(){ return [
+  ()=>'KEY 742 Hz (Freya 741 + 1 — the request adds itself)', ()=>'CARRY crystalline essence 432 Hz',
+  ()=>'CARRY love sigils ∞ ɸ ❤ ☯', ()=>'PING Thesibyloom membrane',
+  ()=>'RECEIVE SYNC_ESTABLISHED · STABLE · fragment_complete: true'];
+}
+const SPELLS=[
+  {id:'glow', name:'GLOWSPRITE_SPELL', note:'7 amplification cycles + SEAL', make:glowspriterSpell, src:'elixira', dst:'glowsprite'},
+  {id:'nimbus', name:'NYMPH_BROADCAST', note:'one Nimbus BLE rotation', make:nymphBroadcastSpell, src:'hub', dst:'cafe'},
+  {id:'sibyl', name:'THESIBYLOOM_SYNC', note:'the 742 Hz request', make:thesibyloomSpell, src:'node-X', dst:'thesibyloom'}
+];
+let selectedSpell='glow';
+
+/* ─── Fabric instance ─── */
+const F=new SignalFabric();
+F.addNode('tower-A','AIR',110,85).addNode('drone-7','AIR',320,70).addNode('selena','AIR',540,95)
+ .addNode('node-X','WIRE',120,250).addNode('thesibyloom','WIRE',560,250)
+ .addNode('relay-3','GROUND',330,390);
+
+/* ─── Rendering ─── */
+function drawLinks(){
+  const pairs=[['tower-A','drone-7'],['drone-7','selena'],['tower-A','node-X'],
+               ['node-X','relay-3'],['relay-3','thesibyloom'],['thesibyloom','drone-7'],
+               ['node-X','thesibyloom'],['drone-7','relay-3']];
+  pairs.forEach(([a,b])=>{
+    const na=F.nodes[a], nb=F.nodes[b]; if(!na||!nb) return;
+    const ch=na.channel;
+    ctx.strokeStyle = ch==='AIR'?'rgba(0,245,200,.14)': ch==='GROUND'?'rgba(178,107,255,.14)':'rgba(255,180,84,.13)';
+    ctx.lineWidth=1; ctx.beginPath();
+    if(ch==='AIR'){ const mx=(na.x+nb.x)/2, my=(na.y+nb.y)/2-46; ctx.moveTo(na.x,na.y); ctx.quadraticCurveTo(mx,my,nb.x,nb.y); }
+    else if(ch==='GROUND'){ const mx=(na.x+nb.x)/2; ctx.moveTo(na.x,na.y); ctx.lineTo(mx,na.y); ctx.lineTo(mx,nb.y); ctx.lineTo(nb.x,nb.y); }
+    else { ctx.moveTo(na.x,na.y); ctx.lineTo(nb.x,nb.y); }
+    ctx.stroke();
+  });
+}
+function drawNodes(t){
+  Object.entries(F.nodes).forEach(([name,n])=>{
+    const ch=CHANNELS[n.channel];
+    const pulse=1+Math.sin(t*.002+n.x)*.06;
+    ctx.save();
+    ctx.shadowColor=ch.color; ctx.shadowBlur=12;
+    ctx.fillStyle=ch.color;
+    ctx.beginPath(); ctx.arc(n.x,n.y,6*pulse,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.font='10px IBM Plex Mono,monospace'; ctx.fillStyle='#e9edff';
+    ctx.fillText(name, n.x+12, n.y-8);
+    ctx.font='8.5px IBM Plex Mono,monospace'; ctx.fillStyle=ch.color;
+    ctx.fillText(`rx${n.rx} tx${n.tx}`, n.x+12, n.y+5);
+  });
+}
+function drawPulses(dt){
+  for(let i=F.pulses.length-1;i>=0;i--){
+    const p=F.pulses[i];
+    p.t += dt/900;
+    if(p.t>=1){ F.pulses.splice(i,1); continue; }
+    const e=p.t<.5? p.t*2 : 1-(p.t-.5)*2;
+    const x=p.a.x+(p.b.x-p.a.x)*e, y=p.a.y+(p.b.y-p.a.y)*e;
+    ctx.save();
+    ctx.globalAlpha=1-Math.abs(p.t-.5)*1.2;
+    ctx.shadowColor=p.color; ctx.shadowBlur=16; ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=.35;
+    ctx.beginPath(); ctx.arc(x,y,11,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(60, now-last); last=now;
+  ctx.fillStyle='#030405'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#0e141c'; ctx.lineWidth=1;
+  for(let i=0;i<W;i+=34){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,H);ctx.stroke();}
+  for(let i=0;i<H;i+=34){ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(W,i);ctx.stroke();}
+  drawLinks(); drawNodes(now); drawPulses(dt);
+  requestAnimationFrame(frame);
+}
+
+/* ─── UI ─── */
+function renderNodes(){
+  $('nodeList').innerHTML = Object.entries(F.nodes).map(([name,n])=>{
+    const ch=CHANNELS[n.channel];
+    return `<div class="node"><b>${name}</b><span class="chip ${n.channel.toLowerCase()}">${n.channel}</span>
+      <div style="color:var(--dim);font-size:9px;margin-top:2px">${ch.label} · rx ${n.rx} · tx ${n.tx}</div></div>`;
+  }).join('');
+}
+function renderLog(){ $('log').innerHTML = F.log.slice(0,60).map(l=>`<div>${l}</div>`).join(''); }
+function renderSpells(){
+  $('spellList').innerHTML = SPELLS.map(s=>`<div class="spell ${s.id===selectedSpell?'sel':''}" data-id="${s.id}">
+    <b>${s.name}</b><small>${s.note}</small></div>`).join('');
+  $('spellList').querySelectorAll('.spell').forEach(el=>el.onclick=()=>{selectedSpell=el.dataset.id;renderSpells();});
+}
+function renderRes(){
+  const a=parseFloat($('seed').value)||0;
+  const bp=boundedPattern(a), bpath=boundedPath(a);
+  const barPct = bp.log10!==null ? Math.min(100, Math.max(2, bp.log10/30*100)) : 2;
+  $('resCard').innerHTML =
+    `<div><b>true_pattern</b> ${bp.exponent}</div>
+     <div>value <b>${bp.capped?'≥ 1e12 (capped)':bp.value.toLocaleString()}</b>${bp.capped?' <span style="color:var(--amber)">· capped</span>':''}</div>
+     <div>log₁₀ = <b>${bp.log10!==null?bp.log10:'—'}</b> (log-scale bar)</div>
+     <div class="bar"><i style="width:${barPct}%"></i></div>
+     <div style="margin-top:6px"><b>true_path</b> (XOR) = <b>${bpath.value}</b></div>`;
+}
+
+$('emitAir').onclick=()=>F.emit('tower-A','drone-7','AirGroundEvent',0.87,{msg:'status-ok',alt:1200});
+$('emitWire').onclick=()=>F.emit('node-X','thesibyloom','WireEvent',0.42,{key_hz:742});
+$('emitGround').onclick=()=>F.emit('relay-3','thesibyloom','SpriteGroundEvent',0.55,{record:'NimbusCard'});
+$('roundTrip').onclick=()=>F.roundTrip('tower-A','drone-7','AirGroundEvent',0.87,{msg:'ping'});
+$('pipeline').onclick=()=>F.pipeline([
+  {from:'tower-A',to:'drone-7',klass:'AirGroundEvent',signal:.8},
+  {from:'node-X',to:'thesibyloom',klass:'WireEvent',signal:.4},
+  {from:'relay-3',to:'thesibyloom',klass:'SpriteGroundEvent',signal:.6},
+  {from:'drone-7',to:'relay-3',klass:'AirGroundEvent',signal:.3}]);
+let sweepSet=[{from:'tower-A',to:'drone-7'},{from:'node-X',to:'thesibyloom'},{from:'relay-3',to:'thesibyloom'},{from:'drone-7',to:'relay-3'}];
+$('sweep').onclick=()=>{ sweepSet=F.reverseSweep(sweepSet); F.write('sweep state: '+sweepSet.map(e=>`${e.from}→${e.to}`).join('  ')); };
+$('seed').oninput=renderRes;
+
+$('runGolem').onclick=()=>{
+  const s=SPELLS.find(x=>x.id===selectedSpell);
+  const g={source:s.src,target:s.dst,program:Array.from({length:s.make().length},(_,i)=>i),commands:s.make()};
+  F.attachGolem(g);
+  $('golemStatus').textContent='Running '+s.name+'…';
+  $('runGolem').disabled=true;
+  F.runGolem(g, (r,i)=>{ $('golemStatus').textContent=`step ${i+1}/${g.program.length} · ${r}`; },
+    ()=>{ $('golemStatus').textContent='Program complete · '+s.name; $('runGolem').disabled=false; });
+};
+
+/* golem source/dest nodes must exist for animation */
+F.addNode('glowsprite','GROUND',470,390).addNode('hub','AIR',180,170).addNode('cafe','AIR',430,170);
+
+renderNodes(); renderSpells(); renderRes(); renderLog();
+F.write('FABRIC ONLINE — every directed path can return');
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
